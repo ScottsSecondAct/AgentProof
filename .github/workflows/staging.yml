@@ -22,13 +22,17 @@ jobs:
           - os: ubuntu-latest
             target: x86_64
             manylinux: auto
+            platform: linux-x86_64
           - os: ubuntu-latest
             target: aarch64
             manylinux: auto
+            platform: linux-aarch64
           - os: macos-14
             target: universal2-apple-darwin
+            platform: macos-universal2
           - os: windows-latest
             target: x86_64
+            platform: windows-x86_64
 
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +51,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.target }}
+          name: wheels-${{ matrix.platform }}
           path: agentproof-python/dist/*.whl
           if-no-files-found: error
