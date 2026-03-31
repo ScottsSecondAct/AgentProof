@@ -1,14 +1,17 @@
+// pyo3's #[pymethods] macro expands in a way that triggers useless_conversion
+// for every PyResult return type. This is a known upstream false positive.
+#![allow(clippy::useless_conversion)]
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 
 use pyo3::exceptions::{PyFileNotFoundError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyString};
+use pyo3::types::{PyDict, PyList};
 use smol_str::SmolStr;
 
 use aegis_compiler::bytecode;
 use aegis_compiler::ir::CompiledPolicy;
-use aegis_runtime::audit::AuditLog as RustAuditLog;
 use aegis_runtime::engine::{PolicyEngine as RustEngine, PolicyResult as RustResult};
 use aegis_runtime::event::{Event as RustEvent, Value};
 
