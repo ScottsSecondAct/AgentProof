@@ -1,5 +1,7 @@
 # AgentProof
 
+[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![Release](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml)
+
 **Formally verified policy enforcement for AI agents.**
 
 Current guardrails check what agents *say*. AgentProof checks what agents *do* — and blocks unauthorized actions before they execute, with mathematical proofs that the constraints hold.
