@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ── aegis-compiler ────────────────────────────────────────────────────────────
+  compiler:
+    name: aegis-compiler (fmt / clippy / test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aegis-compiler
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: aegis-compiler
+
+      - name: Format check
+        run: cargo fmt -- --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  # ── aegis-runtime ─────────────────────────────────────────────────────────────
+  runtime:
+    name: aegis-runtime (clippy / build)
+    runs-on: ubuntu-latest
+    needs: compiler
+    defaults:
+      run:
+        working-directory: aegis-runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: aegis-runtime
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Build
+        run: cargo build
+
+  # ── agentproof-python ─────────────────────────────────────────────────────────
+  python:
+    name: agentproof-python (maturin build)
+    runs-on: ubuntu-latest
+    needs: runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: agentproof-python
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build
+        working-directory: agentproof-python
+        run: maturin build --no-sdist
