@@ -1,6 +1,6 @@
 # AgentProof
 
-[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![Release](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml)
+[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![CI](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/ci.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/ci.yml) [![Staging](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/staging.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/staging.yml) [![Release](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml)
 
 **Formally verified policy enforcement for AI agents.**
 
