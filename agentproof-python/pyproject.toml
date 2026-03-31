@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "agentproof"
+name = "aegis-enforce"
 version = "0.1.0"
 description = "Runtime policy enforcement for AI agents"
 readme = "README.md"
@@ -31,5 +31,5 @@ dev = ["pytest", "pytest-asyncio", "openai", "langchain-core"]
 
 [tool.maturin]
 python-source = "python"
-module-name = "agentproof._agentproof_core"
+module-name = "aegis_enforce._agentproof_core"
 features = ["pyo3/extension-module"]
