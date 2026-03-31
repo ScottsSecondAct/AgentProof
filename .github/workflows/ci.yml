@@ -86,4 +86,4 @@ jobs:
 
       - name: Build
         working-directory: agentproof-python
-        run: maturin build --no-sdist
+        run: maturin build
