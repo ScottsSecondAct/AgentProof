@@ -700,7 +700,6 @@ impl QualifiedName {
     pub fn last(&self) -> &Ident {
         self.segments.last().expect("QualifiedName cannot be empty")
     }
-
 }
 
 impl std::fmt::Display for QualifiedName {

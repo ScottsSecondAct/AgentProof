@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
 use crate::ast::{
-    ActionVerb, BinaryOp, ConstraintKind, Literal, PredicateKind, QuantifierKind,
-    SeverityLevel, UnaryOp, Verdict,
+    ActionVerb, BinaryOp, ConstraintKind, Literal, PredicateKind, QuantifierKind, SeverityLevel,
+    UnaryOp, Verdict,
 };
 
 // ═══════════════════════════════════════════════════════════════════════
