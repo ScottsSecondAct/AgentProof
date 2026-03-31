@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use smol_str::SmolStr;
 
-use aegis_compiler::ast::{BinaryOp, DurationLit, Literal, PredicateKind, QuantifierKind, UnaryOp};
+use aegis_compiler::ast::{BinaryOp, Literal, PredicateKind, QuantifierKind, UnaryOp};
 use aegis_compiler::ir::{CaseTest, DecisionNode, IRExpr, RefPath, RefRoot};
 
 use crate::event::{Event, Value};
@@ -358,7 +358,7 @@ fn eval_predicate(kind: PredicateKind, subject: &Value, argument: &Value) -> Val
 fn eval_quantifier(
     kind: QuantifierKind,
     collection: &Value,
-    param: &SmolStr,
+    _param: &SmolStr,
     body: &IRExpr,
     ctx: &EvalContext<'_>,
 ) -> Value {
@@ -425,7 +425,7 @@ fn eval_quantifier(
 
 fn eval_count(
     collection: &Value,
-    param: Option<&SmolStr>,
+    _param: Option<&SmolStr>,
     filter: Option<&IRExpr>,
     ctx: &EvalContext<'_>,
 ) -> Value {

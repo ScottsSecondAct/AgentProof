@@ -15,9 +15,7 @@ use std::io::Write;
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
-use aegis_compiler::ast::Verdict;
-
-use crate::engine::{ConstraintViolation, PolicyResult, Violation};
+use crate::engine::PolicyResult;
 use crate::event::Event;
 
 /// A single audit log entry.

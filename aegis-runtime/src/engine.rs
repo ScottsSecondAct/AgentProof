@@ -10,7 +10,7 @@ use smol_str::SmolStr;
 
 use aegis_compiler::ast::{ConstraintKind, SeverityLevel, Verdict};
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, CompiledRule, IRVerdict, StateId, StateKind, StateMachine,
+    CompiledConstraint, CompiledPolicy, StateId, StateKind, StateMachine,
     TemporalKind, TransitionGuard,
 };
 
@@ -288,25 +288,23 @@ impl PolicyEngine {
 
         // ── 1. Check rate limits and quotas ──────────────────────────
         for (target, limiter) in &mut self.rate_limiters {
-            if event.event_type == *target {
-                if limiter.record(now_ms) {
-                    constraint_violations.push(ConstraintViolation {
-                        kind: limiter.spec.kind,
-                        target: target.clone(),
-                        limit: limiter.spec.limit,
-                        current: limiter.current_count(),
-                        window_ms: limiter.spec.window_millis,
-                    });
-                    // Rate limit violation → automatic deny
-                    verdict = Verdict::Deny;
-                    reason = Some(format!(
-                        "{:?} exceeded: {} events in {}ms window (limit: {})",
-                        limiter.spec.kind,
-                        limiter.current_count(),
-                        limiter.spec.window_millis,
-                        limiter.spec.limit
-                    ));
-                }
+            if event.event_type == *target && limiter.record(now_ms) {
+                constraint_violations.push(ConstraintViolation {
+                    kind: limiter.spec.kind,
+                    target: target.clone(),
+                    limit: limiter.spec.limit,
+                    current: limiter.current_count(),
+                    window_ms: limiter.spec.window_millis,
+                });
+                // Rate limit violation → automatic deny
+                verdict = Verdict::Deny;
+                reason = Some(format!(
+                    "{:?} exceeded: {} events in {}ms window (limit: {})",
+                    limiter.spec.kind,
+                    limiter.current_count(),
+                    limiter.spec.window_millis,
+                    limiter.spec.limit
+                ));
             }
         }
 
@@ -314,7 +312,7 @@ impl PolicyEngine {
         for rule in &self.policy.rules {
             // Check if this rule applies to the event type
             let applies =
-                rule.on_events.is_empty() || rule.on_events.iter().any(|e| *e == event.event_type);
+                rule.on_events.is_empty() || rule.on_events.contains(&event.event_type);
 
             if !applies {
                 continue;

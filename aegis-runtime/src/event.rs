@@ -6,7 +6,7 @@
 //! to the verifier.
 
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
@@ -116,11 +116,9 @@ impl Value {
                 // Full regex support via the `regex` crate in v2.
                 if pattern.starts_with('^') && pattern.ends_with('$') {
                     s.as_str() == &pattern[1..pattern.len() - 1]
-                } else if pattern.ends_with(".*") {
-                    let prefix = &pattern[..pattern.len() - 2];
+                } else if let Some(prefix) = pattern.strip_suffix(".*") {
                     s.starts_with(prefix)
-                } else if pattern.starts_with(".*") {
-                    let suffix = &pattern[2..];
+                } else if let Some(suffix) = pattern.strip_prefix(".*") {
                     s.ends_with(suffix)
                 } else {
                     s.contains(pattern)
