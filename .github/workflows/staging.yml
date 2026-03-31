@@ -42,9 +42,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux || 'off' }}
-          args: --release --out dist
+          args: --release --out dist -i python3.11
           working-directory: agentproof-python
-          python-version: "3.11"
 
       - uses: actions/upload-artifact@v4
         with:
