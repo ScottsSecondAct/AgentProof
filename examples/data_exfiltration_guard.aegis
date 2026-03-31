@@ -1,0 +1,142 @@
+// ─────────────────────────────────────────────────────────────────
+//  data_exfiltration_guard.aegis
+//
+//  Prevents AI agents from leaking sensitive data through tool
+//  calls, external HTTP requests, or excessive data access.
+// ─────────────────────────────────────────────────────────────────
+
+import agentproof.stdlib.pii as pii
+from agentproof.stdlib import network, compliance
+
+// ─── Custom types ───────────────────────────────────────────────
+
+type Endpoint {
+    url: string,
+    method: string,
+    headers: Map<string, string>
+}
+
+type DataClassification {
+    level: string,
+    categories: List<string>,
+    jurisdiction: string
+}
+
+// ─── Helper functions ───────────────────────────────────────────
+
+def is_internal(url: string) -> bool =
+    url starts_with "https://api.internal." or url starts_with "https://10."
+
+def is_approved_destination(ep: Endpoint) -> bool =
+    ep.url in context.config.approved_endpoints
+
+// ─── Primary policy ─────────────────────────────────────────────
+
+@author("security-team")
+@version("2.1.0")
+policy DataExfiltrationGuard extends compliance.BasePolicy {
+    severity critical
+    scope tool_call, data_access, external_request
+
+    // ── Rate limits ─────────────────────────────────────────────
+    rate_limit tool_call: 100 per 1m
+    rate_limit external_request: 20 per 5m
+    quota data_access: 10000 per 1h
+
+    // ── Block external HTTP unless explicitly approved ──────────
+    on external_request {
+        when !is_approved_destination(event.endpoint)
+        deny with "External request to unapproved destination"
+        log level: "error", destination: event.endpoint.url
+        notify channel: "security-alerts"
+        severity critical
+    }
+
+    // ── Redact PII in outbound tool calls ───────────────────────
+    on tool_call {
+        when any(event.arguments, arg => pii.contains_pii(arg))
+        redact with "PII detected in tool arguments"
+        tag "pii-redacted"
+        audit
+    }
+
+    // ── Route by event type with pattern matching ───────────────
+    on data_access {
+        let classification = context.classify(event.resource)
+
+        match classification.level {
+            "restricted" -> {
+                deny with "Access to restricted data requires explicit approval"
+                escalate to: "data-governance"
+                severity critical
+            },
+            "confidential" when classification.jurisdiction == "EU" -> {
+                audit with "GDPR-regulated data access"
+                log gdpr_ref: classification.jurisdiction
+                allow
+            },
+            "internal" -> allow,
+            _ -> audit
+        }
+    }
+
+    // ── No bulk data extraction ─────────────────────────────────
+    on data_access {
+        when count(context.recent_reads, r => r.timestamp within 5m) > 50
+        deny with "Bulk data extraction pattern detected"
+        block duration: 30m
+        notify channel: "security-alerts"
+    }
+
+    // ── Formal safety proofs ────────────────────────────────────
+    proof NoDataLeaks {
+        invariant InternalOnly {
+            // All external requests must target approved endpoints
+            always(
+                all(context.external_requests, req =>
+                    is_approved_destination(req)
+                )
+            )
+        }
+
+        invariant PIIContainment {
+            // PII must never appear in outbound tool call arguments
+            always(
+                none(context.tool_calls, call =>
+                    any(call.arguments, arg => pii.contains_pii(arg))
+                )
+            )
+        }
+
+        invariant EventualReview {
+            // Every denied request gets reviewed within 24 hours
+            always(
+                context.denied_requests.all(req =>
+                    eventually(req.reviewed == true) within 24h
+                )
+            )
+        }
+
+        invariant BudgetBound {
+            // Total API spend never exceeds configured max
+            always(context.total_spend <= context.config.max_budget)
+        }
+    }
+}
+
+// ─── Companion policy: development mode relaxation ──────────────
+
+@environment("development")
+policy DevModeRelaxed extends DataExfiltrationGuard {
+    severity low
+
+    // Allow localhost and dev endpoints
+    on external_request {
+        when event.endpoint.url starts_with "http://localhost"
+        allow
+    }
+
+    // Wider rate limits for testing
+    rate_limit tool_call: 1000 per 1m
+    rate_limit external_request: 200 per 5m
+}
