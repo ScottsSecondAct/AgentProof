@@ -701,11 +701,16 @@ impl QualifiedName {
         self.segments.last().expect("QualifiedName cannot be empty")
     }
 
-    pub fn to_string(&self) -> String {
-        self.segments
+}
+
+impl std::fmt::Display for QualifiedName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self
+            .segments
             .iter()
             .map(|s| s.node.as_str())
             .collect::<Vec<_>>()
-            .join(".")
+            .join(".");
+        f.write_str(&s)
     }
 }

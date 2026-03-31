@@ -17,7 +17,6 @@
 //! ```
 
 use std::path::{Path, PathBuf};
-use std::process;
 
 /// CLI entry point. In a real build, this would be `fn main()` in
 /// `src/bin/aegisc.rs`. Here it's a library function for testability.

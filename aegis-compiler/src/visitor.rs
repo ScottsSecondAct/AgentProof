@@ -40,6 +40,7 @@ pub trait RuleContext {
     fn stop_token(&self) -> Option<&dyn TokenAccess>;
 }
 
+#[allow(dead_code)]
 fn span_from(ctx: &dyn RuleContext) -> Span {
     let start = ctx.start_token().map(|t| t.start_byte()).unwrap_or(0);
     let end = ctx.stop_token().map(|t| t.stop_byte() + 1).unwrap_or(start);
@@ -80,6 +81,7 @@ fn ident_from(token: &dyn TokenAccess) -> Ident {
 /// ```
 pub struct AstBuilder<'src> {
     /// The original source text, used for extracting string literal content.
+    #[allow(dead_code)]
     source: &'src str,
 }
 
@@ -129,17 +131,17 @@ impl<'src> AstBuilder<'src> {
     // ═══════════════════════════════════════════════════════════════════
 
     fn build_import(&self, ctx: ImportContext<'_>) -> ImportDecl {
-        let path = self.build_qualified_name(&ctx.path);
+        let path = self.build_qualified_name(ctx.path);
         let kind = match ctx.kind {
             ImportStyle::Module { alias } => ImportKind::Module {
-                alias: alias.map(|a| ident_from(a)),
+                alias: alias.map(ident_from),
             },
             ImportStyle::Names(targets) => {
                 let tgts = targets
                     .into_iter()
                     .map(|t| ImportTarget {
                         name: ident_from(t.name),
-                        alias: t.alias.map(|a| ident_from(a)),
+                        alias: t.alias.map(ident_from),
                     })
                     .collect();
                 ImportKind::Names(tgts)
@@ -724,7 +726,7 @@ impl<'src> AstBuilder<'src> {
 
     fn build_argument(&self, ctx: ArgumentContext<'_>) -> Argument {
         Argument {
-            name: ctx.name.map(|n| ident_from(n)),
+            name: ctx.name.map(ident_from),
             value: self.build_expr(ctx.value),
         }
     }
@@ -757,7 +759,7 @@ impl<'src> AstBuilder<'src> {
         match ctx {
             LiteralContext::Bool(val) => Literal::Bool(val),
             LiteralContext::Int(text) => {
-                let cleaned = text.trim_end_matches(|c| c == 'l' || c == 'L');
+                let cleaned = text.trim_end_matches(['l', 'L']);
                 Literal::Int(cleaned.parse().unwrap_or(0))
             }
             LiteralContext::Float(text) => {

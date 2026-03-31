@@ -3,7 +3,7 @@ use std::fmt;
 
 use smol_str::SmolStr;
 
-use crate::ast::{PrimitiveType, Span, Spanned};
+use crate::ast::PrimitiveType;
 
 /// A unique identifier for a type in the type environment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -179,6 +179,12 @@ pub struct FunctionSig {
     pub ret: Ty,
 }
 
+impl Default for Scope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Scope {
     pub fn new() -> Self {
         Self {
@@ -193,6 +199,12 @@ impl Scope {
 pub struct TypeEnv {
     scopes: Vec<Scope>,
     next_type_id: u32,
+}
+
+impl Default for TypeEnv {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TypeEnv {

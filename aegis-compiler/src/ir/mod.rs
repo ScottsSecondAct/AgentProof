@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
 use crate::ast::{
-    ActionVerb, BinaryOp, ConstraintKind, DurationLit, Literal, PredicateKind, QuantifierKind,
+    ActionVerb, BinaryOp, ConstraintKind, Literal, PredicateKind, QuantifierKind,
     SeverityLevel, UnaryOp, Verdict,
 };
 
@@ -302,6 +302,12 @@ pub enum CaseTest {
 
 pub struct StateMachineBuilder {
     pub(crate) next_id: u32,
+}
+
+impl Default for StateMachineBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateMachineBuilder {

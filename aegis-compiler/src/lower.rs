@@ -70,6 +70,12 @@ pub struct Lowering {
     functions: HashMap<SmolStr, FunctionDecl>,
 }
 
+impl Default for Lowering {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Lowering {
     pub fn new() -> Self {
         Self {

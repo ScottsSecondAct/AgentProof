@@ -43,6 +43,12 @@ pub struct TypeChecker {
     diag: DiagnosticSink,
 }
 
+impl Default for TypeChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeChecker {
     pub fn new() -> Self {
         Self {
@@ -413,7 +419,7 @@ impl TypeChecker {
                 Ty::Error
             }
 
-            Expr::Context(name) => {
+            Expr::Context(_name) => {
                 if !ctx.in_policy && !ctx.in_rule {
                     self.diag.emit(Diagnostic::error(
                         span,
@@ -536,7 +542,7 @@ impl TypeChecker {
 
             Expr::MethodCall {
                 object,
-                method,
+                method: _,
                 args,
             } => {
                 let _obj_ty = self.check_expr(&object.node, object.span, ctx);
@@ -644,7 +650,7 @@ impl TypeChecker {
             }
 
             Expr::Quantifier {
-                kind,
+                kind: _,
                 collection,
                 predicate,
             } => {
@@ -1044,7 +1050,7 @@ impl TypeChecker {
             crate::ast::nodes::Type::Set(inner) => {
                 Ty::Set(Box::new(self.resolve_type(&inner.node)))
             }
-            crate::ast::nodes::Type::Named { name, type_args } => {
+            crate::ast::nodes::Type::Named { name, type_args: _ } => {
                 let type_name = name.to_string();
                 if let Some(ty) = self.env.lookup_type(&type_name).cloned() {
                     ty
