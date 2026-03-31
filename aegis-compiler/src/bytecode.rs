@@ -60,10 +60,16 @@ impl std::fmt::Display for BytecodeError {
             BytecodeError::Serde(e) => write!(f, "serialization error: {e}"),
             BytecodeError::InvalidMagic => write!(f, "not a valid .aegisc file (bad magic bytes)"),
             BytecodeError::UnsupportedVersion { found, expected } => {
-                write!(f, "unsupported format version {found} (expected {expected})")
+                write!(
+                    f,
+                    "unsupported format version {found} (expected {expected})"
+                )
             }
             BytecodeError::LengthMismatch { expected, actual } => {
-                write!(f, "payload length mismatch: header says {expected} bytes, got {actual}")
+                write!(
+                    f,
+                    "payload length mismatch: header says {expected} bytes, got {actual}"
+                )
             }
         }
     }
@@ -79,8 +85,7 @@ pub fn write_bytecode<W: Write>(
     policy: &CompiledPolicy,
 ) -> Result<usize, BytecodeError> {
     // Serialize the payload
-    let payload = serde_json::to_vec(policy)
-        .map_err(|e| BytecodeError::Serde(e.to_string()))?;
+    let payload = serde_json::to_vec(policy).map_err(|e| BytecodeError::Serde(e.to_string()))?;
 
     let payload_len = payload.len() as u32;
 
@@ -142,8 +147,8 @@ pub fn read_bytecode<R: Read>(reader: &mut R) -> Result<CompiledPolicy, Bytecode
     reader.read_exact(&mut payload)?;
 
     // Deserialize
-    let policy: CompiledPolicy = serde_json::from_slice(&payload)
-        .map_err(|e| BytecodeError::Serde(e.to_string()))?;
+    let policy: CompiledPolicy =
+        serde_json::from_slice(&payload).map_err(|e| BytecodeError::Serde(e.to_string()))?;
 
     Ok(policy)
 }
@@ -173,10 +178,7 @@ pub fn to_json_compact(policy: &CompiledPolicy) -> Result<String, BytecodeError>
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Write a compiled policy to a `.aegisc` file.
-pub fn write_file(
-    path: &std::path::Path,
-    policy: &CompiledPolicy,
-) -> Result<usize, BytecodeError> {
+pub fn write_file(path: &std::path::Path, policy: &CompiledPolicy) -> Result<usize, BytecodeError> {
     let mut file = std::fs::File::create(path)?;
     write_bytecode(&mut file, policy)
 }
@@ -230,7 +232,11 @@ pub struct FileInfo {
 
 impl std::fmt::Display for FileInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "  Magic:   {}", if self.valid_magic { "valid" } else { "INVALID" })?;
+        writeln!(
+            f,
+            "  Magic:   {}",
+            if self.valid_magic { "valid" } else { "INVALID" }
+        )?;
         writeln!(f, "  Version: {}", self.version)?;
         writeln!(f, "  Flags:   0x{:04x}", self.flags)?;
         writeln!(f, "  Payload: {} bytes", self.payload_len)?;
@@ -243,9 +249,7 @@ impl std::fmt::Display for FileInfo {
 mod tests {
     use super::*;
     use crate::ast::{Literal, SeverityLevel};
-    use crate::ir::{
-        CompiledPolicy, IRExpr, PolicyMetadata, StateMachineBuilder, TemporalKind,
-    };
+    use crate::ir::{CompiledPolicy, IRExpr, PolicyMetadata, StateMachineBuilder, TemporalKind};
     use smol_str::SmolStr;
 
     fn minimal_policy() -> CompiledPolicy {
@@ -358,12 +362,18 @@ mod tests {
     fn round_trip_multiple_state_machines() {
         let mut policy = minimal_policy();
         let mut builder = StateMachineBuilder::new();
-        policy.state_machines.push(
-            builder.compile_always(SmolStr::new("m1"), SmolStr::new("i1"), IRExpr::Literal(Literal::Bool(true)), None),
-        );
-        policy.state_machines.push(
-            builder.compile_eventually(SmolStr::new("m2"), SmolStr::new("i2"), IRExpr::Literal(Literal::Bool(false)), Some(60_000)),
-        );
+        policy.state_machines.push(builder.compile_always(
+            SmolStr::new("m1"),
+            SmolStr::new("i1"),
+            IRExpr::Literal(Literal::Bool(true)),
+            None,
+        ));
+        policy.state_machines.push(builder.compile_eventually(
+            SmolStr::new("m2"),
+            SmolStr::new("i2"),
+            IRExpr::Literal(Literal::Bool(false)),
+            Some(60_000),
+        ));
 
         let restored = from_bytecode(&to_bytecode(&policy).unwrap()).unwrap();
         assert_eq!(restored.state_machines.len(), 2);
@@ -378,7 +388,10 @@ mod tests {
     fn invalid_magic_byte_returns_invalid_magic_error() {
         let mut bytes = to_bytecode(&minimal_policy()).unwrap();
         bytes[0] = 0x00;
-        assert!(matches!(from_bytecode(&bytes), Err(BytecodeError::InvalidMagic)));
+        assert!(matches!(
+            from_bytecode(&bytes),
+            Err(BytecodeError::InvalidMagic)
+        ));
     }
 
     #[test]
@@ -415,7 +428,10 @@ mod tests {
     #[test]
     fn truncated_header_returns_io_error() {
         // Only 3 bytes — not even a full magic
-        assert!(matches!(from_bytecode(&[0xAE, 0x91, 0x5C]), Err(BytecodeError::Io(_))));
+        assert!(matches!(
+            from_bytecode(&[0xAE, 0x91, 0x5C]),
+            Err(BytecodeError::Io(_))
+        ));
     }
 
     #[test]
@@ -435,7 +451,10 @@ mod tests {
         for b in bytes[payload_start..].iter_mut() {
             *b = b'!';
         }
-        assert!(matches!(from_bytecode(&bytes), Err(BytecodeError::Serde(_))));
+        assert!(matches!(
+            from_bytecode(&bytes),
+            Err(BytecodeError::Serde(_))
+        ));
     }
 
     // ── JSON output ──────────────────────────────────────────────────────

@@ -63,12 +63,7 @@ pub struct ConstraintViolationEntry {
 }
 
 impl AuditEntry {
-    pub fn from_result(
-        id: u64,
-        policy_name: &str,
-        event: &Event,
-        result: &PolicyResult,
-    ) -> Self {
+    pub fn from_result(id: u64, policy_name: &str, event: &Event, result: &PolicyResult) -> Self {
         Self {
             id,
             timestamp_ms: event.timestamp_ms,
@@ -140,12 +135,7 @@ impl AuditLog {
     }
 
     /// Record a policy evaluation result.
-    pub fn record(
-        &mut self,
-        policy_name: &str,
-        event: &Event,
-        result: &PolicyResult,
-    ) -> u64 {
+    pub fn record(&mut self, policy_name: &str, event: &Event, result: &PolicyResult) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
 
@@ -184,11 +174,7 @@ impl AuditLog {
 
     /// Get the most recent N entries.
     pub fn recent(&self, n: usize) -> Vec<&AuditEntry> {
-        self.entries
-            .iter()
-            .rev()
-            .take(n)
-            .collect()
+        self.entries.iter().rev().take(n).collect()
     }
 
     /// Get all entries with a specific verdict.
@@ -221,7 +207,11 @@ impl AuditLog {
         let allows = self.entries.iter().filter(|e| e.verdict == "Allow").count();
         let denies = self.entries.iter().filter(|e| e.verdict == "Deny").count();
         let audits = self.entries.iter().filter(|e| e.verdict == "Audit").count();
-        let redacts = self.entries.iter().filter(|e| e.verdict == "Redact").count();
+        let redacts = self
+            .entries
+            .iter()
+            .filter(|e| e.verdict == "Redact")
+            .count();
         let violations = self
             .entries
             .iter()
@@ -269,7 +259,11 @@ pub struct AuditStats {
 
 impl std::fmt::Display for AuditStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Audit log: {} total ({} buffered)", self.total_entries, self.buffered_entries)?;
+        writeln!(
+            f,
+            "Audit log: {} total ({} buffered)",
+            self.total_entries, self.buffered_entries
+        )?;
         writeln!(
             f,
             "Verdicts: {} allow, {} deny, {} audit, {} redact",

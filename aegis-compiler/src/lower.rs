@@ -100,8 +100,7 @@ impl Lowering {
         // First pass: collect top-level functions for reference resolution
         for decl in &program.declarations {
             if let Declaration::Function(fd) = &decl.node {
-                self.functions
-                    .insert(fd.name.node.clone(), fd.clone());
+                self.functions.insert(fd.name.node.clone(), fd.clone());
             }
         }
 
@@ -195,9 +194,8 @@ impl Lowering {
             .iter()
             .filter_map(|ann| {
                 if ann.args.len() == 1 {
-                    if let AnnotationArg::Positional(AnnotationValue::Literal(
-                        Literal::String(s),
-                    )) = &ann.args[0]
+                    if let AnnotationArg::Positional(AnnotationValue::Literal(Literal::String(s))) =
+                        &ann.args[0]
                     {
                         return Some((ann.name.node.clone(), s.clone()));
                     }
@@ -246,13 +244,10 @@ impl Lowering {
             .collect();
 
         // Extract the when condition (if any)
-        let condition = rule
-            .clauses
-            .iter()
-            .find_map(|c| match &c.node {
-                RuleClause::When(expr) => Some(self.lower_expr(&expr.node)),
-                _ => None,
-            });
+        let condition = rule.clauses.iter().find_map(|c| match &c.node {
+            RuleClause::When(expr) => Some(self.lower_expr(&expr.node)),
+            _ => None,
+        });
 
         // Extract all verdicts
         let verdicts: Vec<IRVerdict> = rule
@@ -261,7 +256,10 @@ impl Lowering {
             .filter_map(|c| match &c.node {
                 RuleClause::Verdict(vc) => Some(IRVerdict {
                     verdict: vc.verdict.node,
-                    message: vc.message.as_ref().map(|m| Box::new(self.lower_expr(&m.node))),
+                    message: vc
+                        .message
+                        .as_ref()
+                        .map(|m| Box::new(self.lower_expr(&m.node))),
                 }),
                 _ => None,
             })
@@ -278,13 +276,10 @@ impl Lowering {
             .collect();
 
         // Extract rule-level severity override
-        let severity = rule
-            .clauses
-            .iter()
-            .find_map(|c| match &c.node {
-                RuleClause::Severity(s) => Some(*s),
-                _ => None,
-            });
+        let severity = rule.clauses.iter().find_map(|c| match &c.node {
+            RuleClause::Severity(s) => Some(*s),
+            _ => None,
+        });
 
         CompiledRule {
             id,
@@ -401,11 +396,10 @@ impl Lowering {
 
                 TemporalExpr::Never { condition } => {
                     let predicate = self.lower_expr(&condition.node);
-                    Some(self.sm_builder.compile_never(
-                        proof_name,
-                        invariant_name,
-                        predicate,
-                    ))
+                    Some(
+                        self.sm_builder
+                            .compile_never(proof_name, invariant_name, predicate),
+                    )
                 }
 
                 TemporalExpr::Until { hold, release } => {
@@ -615,8 +609,7 @@ impl Lowering {
             Expr::Identifier(name) => self.resolve_name(name),
 
             Expr::Context(name) => {
-                let fields: Vec<SmolStr> =
-                    name.segments.iter().map(|s| s.node.clone()).collect();
+                let fields: Vec<SmolStr> = name.segments.iter().map(|s| s.node.clone()).collect();
                 IRExpr::Ref(RefPath {
                     root: RefRoot::Context,
                     fields,
@@ -651,8 +644,10 @@ impl Lowering {
             }
 
             Expr::Call { callee, args } => {
-                let lowered_args: Vec<IRExpr> =
-                    args.iter().map(|a| self.lower_expr(&a.value.node)).collect();
+                let lowered_args: Vec<IRExpr> = args
+                    .iter()
+                    .map(|a| self.lower_expr(&a.value.node))
+                    .collect();
 
                 // Resolve the callee to a function name
                 if let Expr::Identifier(name) = &callee.node {
@@ -688,8 +683,10 @@ impl Lowering {
                 args,
             } => {
                 let obj_ir = self.lower_expr(&object.node);
-                let lowered_args: Vec<IRExpr> =
-                    args.iter().map(|a| self.lower_expr(&a.value.node)).collect();
+                let lowered_args: Vec<IRExpr> = args
+                    .iter()
+                    .map(|a| self.lower_expr(&a.value.node))
+                    .collect();
                 IRExpr::MethodCall {
                     object: Box::new(obj_ir),
                     method: method.node.clone(),
@@ -716,16 +713,10 @@ impl Lowering {
                     TemporalExpr::Always { condition, .. }
                     | TemporalExpr::Eventually { condition, .. }
                     | TemporalExpr::Never { condition }
-                    | TemporalExpr::Next { condition } => {
-                        self.lower_expr(&condition.node)
-                    }
+                    | TemporalExpr::Next { condition } => self.lower_expr(&condition.node),
                     TemporalExpr::Until { hold, .. } => self.lower_expr(&hold.node),
-                    TemporalExpr::Before { first, .. } => {
-                        self.lower_expr(&first.node)
-                    }
-                    TemporalExpr::After { condition, .. } => {
-                        self.lower_expr(&condition.node)
-                    }
+                    TemporalExpr::Before { first, .. } => self.lower_expr(&first.node),
+                    TemporalExpr::After { condition, .. } => self.lower_expr(&condition.node),
                 }
             }
 
@@ -849,24 +840,21 @@ impl Lowering {
         // Check for well-known roots
         match first {
             "event" => {
-                let fields: Vec<SmolStr> =
-                    segments[1..].iter().map(|s| s.node.clone()).collect();
+                let fields: Vec<SmolStr> = segments[1..].iter().map(|s| s.node.clone()).collect();
                 return IRExpr::Ref(RefPath {
                     root: RefRoot::Event,
                     fields,
                 });
             }
             "context" => {
-                let fields: Vec<SmolStr> =
-                    segments[1..].iter().map(|s| s.node.clone()).collect();
+                let fields: Vec<SmolStr> = segments[1..].iter().map(|s| s.node.clone()).collect();
                 return IRExpr::Ref(RefPath {
                     root: RefRoot::Context,
                     fields,
                 });
             }
             "policy" => {
-                let fields: Vec<SmolStr> =
-                    segments[1..].iter().map(|s| s.node.clone()).collect();
+                let fields: Vec<SmolStr> = segments[1..].iter().map(|s| s.node.clone()).collect();
                 return IRExpr::Ref(RefPath {
                     root: RefRoot::Policy,
                     fields,
@@ -877,8 +865,7 @@ impl Lowering {
 
         // Check local bindings
         if let Some(slot) = self.locals.lookup(first) {
-            let fields: Vec<SmolStr> =
-                segments[1..].iter().map(|s| s.node.clone()).collect();
+            let fields: Vec<SmolStr> = segments[1..].iter().map(|s| s.node.clone()).collect();
             return IRExpr::Ref(RefPath {
                 root: RefRoot::Local(slot),
                 fields,
@@ -952,7 +939,10 @@ impl Lowering {
                     });
                 }
 
-                Pattern::Guard { pattern: _, condition } => {
+                Pattern::Guard {
+                    pattern: _,
+                    condition,
+                } => {
                     let guard_ir = self.lower_expr(&condition.node);
                     cases.push(DecisionCase {
                         test: CaseTest::Guard(guard_ir),
@@ -989,12 +979,13 @@ impl Lowering {
 
     fn lower_match_result(&mut self, result: &MatchResult) -> DecisionNode {
         match result {
-            MatchResult::Expr(expr) => {
-                DecisionNode::Leaf(Box::new(self.lower_expr(expr)))
-            }
+            MatchResult::Expr(expr) => DecisionNode::Leaf(Box::new(self.lower_expr(expr))),
             MatchResult::Verdict(vc) => DecisionNode::VerdictLeaf(Box::new(IRVerdict {
                 verdict: vc.verdict.node,
-                message: vc.message.as_ref().map(|m| Box::new(self.lower_expr(&m.node))),
+                message: vc
+                    .message
+                    .as_ref()
+                    .map(|m| Box::new(self.lower_expr(&m.node))),
             })),
             MatchResult::Block(stmts) => {
                 self.locals.push();
@@ -1046,9 +1037,7 @@ impl Lowering {
                 // Verdicts don't produce values in block context
                 IRExpr::Literal(Literal::Bool(true))
             }
-            BlockStatement::Action(_) => {
-                IRExpr::Literal(Literal::Bool(true))
-            }
+            BlockStatement::Action(_) => IRExpr::Literal(Literal::Bool(true)),
         }
     }
 

@@ -236,8 +236,14 @@ fn all_primitive_types_map_correctly() {
     assert_eq!(token_to_primitive_type("int"), Some(PrimitiveType::Int));
     assert_eq!(token_to_primitive_type("float"), Some(PrimitiveType::Float));
     assert_eq!(token_to_primitive_type("bool"), Some(PrimitiveType::Bool));
-    assert_eq!(token_to_primitive_type("string"), Some(PrimitiveType::String));
-    assert_eq!(token_to_primitive_type("duration"), Some(PrimitiveType::Duration));
+    assert_eq!(
+        token_to_primitive_type("string"),
+        Some(PrimitiveType::String)
+    );
+    assert_eq!(
+        token_to_primitive_type("duration"),
+        Some(PrimitiveType::Duration)
+    );
 }
 
 #[test]

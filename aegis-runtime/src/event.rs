@@ -102,9 +102,7 @@ impl Value {
     /// Check if this value contains another value (for the `contains` predicate).
     pub fn contains(&self, needle: &Value) -> bool {
         match (self, needle) {
-            (Value::String(haystack), Value::String(needle)) => {
-                haystack.contains(needle.as_str())
-            }
+            (Value::String(haystack), Value::String(needle)) => haystack.contains(needle.as_str()),
             (Value::List(items), _) => items.iter().any(|item| item == needle),
             _ => false,
         }

@@ -220,7 +220,10 @@ impl DiagnosticSink {
             for note in &diag.notes {
                 if let Some(span) = note.span {
                     let (nl, nc) = offset_to_line_col(source, span.start);
-                    output.push_str(&format!("  note: {} ({filename}:{nl}:{nc})\n", note.message));
+                    output.push_str(&format!(
+                        "  note: {} ({filename}:{nl}:{nc})\n",
+                        note.message
+                    ));
                 } else {
                     output.push_str(&format!("  note: {}\n", note.message));
                 }
@@ -252,9 +255,9 @@ fn offset_to_line_col(source: &str, offset: u32) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::PrimitiveType;
     use crate::ast::Span;
     use crate::types::Ty;
-    use crate::ast::PrimitiveType;
 
     fn dummy_span() -> Span {
         Span::new(0, 5)
@@ -274,7 +277,11 @@ mod tests {
     #[test]
     fn emit_error_sets_has_errors() {
         let mut sink = DiagnosticSink::new();
-        sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0001, "undefined"));
+        sink.emit(Diagnostic::error(
+            dummy_span(),
+            DiagnosticCode::E0001,
+            "undefined",
+        ));
         assert!(sink.has_errors());
         assert_eq!(sink.error_count(), 1);
         assert_eq!(sink.warning_count(), 0);
@@ -283,7 +290,11 @@ mod tests {
     #[test]
     fn emit_warning_does_not_set_has_errors() {
         let mut sink = DiagnosticSink::new();
-        sink.emit(Diagnostic::warning(dummy_span(), DiagnosticCode::W0001, "unused binding"));
+        sink.emit(Diagnostic::warning(
+            dummy_span(),
+            DiagnosticCode::W0001,
+            "unused binding",
+        ));
         assert!(!sink.has_errors());
         assert_eq!(sink.error_count(), 0);
         assert_eq!(sink.warning_count(), 1);
@@ -294,7 +305,11 @@ mod tests {
         let mut sink = DiagnosticSink::new();
         sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0001, "e1"));
         sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0002, "e2"));
-        sink.emit(Diagnostic::warning(dummy_span(), DiagnosticCode::W0001, "w1"));
+        sink.emit(Diagnostic::warning(
+            dummy_span(),
+            DiagnosticCode::W0001,
+            "w1",
+        ));
         assert_eq!(sink.error_count(), 2);
         assert_eq!(sink.warning_count(), 1);
     }
@@ -303,7 +318,11 @@ mod tests {
     fn into_diagnostics_returns_all_emitted() {
         let mut sink = DiagnosticSink::new();
         sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0001, "e1"));
-        sink.emit(Diagnostic::warning(dummy_span(), DiagnosticCode::W0001, "w1"));
+        sink.emit(Diagnostic::warning(
+            dummy_span(),
+            DiagnosticCode::W0001,
+            "w1",
+        ));
         let diags = sink.into_diagnostics();
         assert_eq!(diags.len(), 2);
     }
@@ -311,8 +330,16 @@ mod tests {
     #[test]
     fn diagnostics_slice_matches_emitted_order() {
         let mut sink = DiagnosticSink::new();
-        sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0001, "first"));
-        sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0002, "second"));
+        sink.emit(Diagnostic::error(
+            dummy_span(),
+            DiagnosticCode::E0001,
+            "first",
+        ));
+        sink.emit(Diagnostic::error(
+            dummy_span(),
+            DiagnosticCode::E0002,
+            "second",
+        ));
         let diags = sink.diagnostics();
         assert_eq!(diags[0].code, DiagnosticCode::E0001);
         assert_eq!(diags[1].code, DiagnosticCode::E0002);
@@ -433,7 +460,11 @@ mod tests {
     #[test]
     fn render_includes_filename_code_and_message() {
         let mut sink = DiagnosticSink::new();
-        sink.emit(Diagnostic::error(Span::new(0, 5), DiagnosticCode::E0001, "undefined x"));
+        sink.emit(Diagnostic::error(
+            Span::new(0, 5),
+            DiagnosticCode::E0001,
+            "undefined x",
+        ));
         let out = sink.render("hello world", "policy.aegis");
         assert!(out.contains("policy.aegis"), "output: {out}");
         assert!(out.contains("E0001"), "output: {out}");
@@ -444,7 +475,11 @@ mod tests {
     fn render_error_prefix_vs_warning_prefix() {
         let mut sink = DiagnosticSink::new();
         sink.emit(Diagnostic::error(dummy_span(), DiagnosticCode::E0001, "e"));
-        sink.emit(Diagnostic::warning(dummy_span(), DiagnosticCode::W0001, "w"));
+        sink.emit(Diagnostic::warning(
+            dummy_span(),
+            DiagnosticCode::W0001,
+            "w",
+        ));
         let out = sink.render("src", "f.aegis");
         assert!(out.contains("error["), "output: {out}");
         assert!(out.contains("warning["), "output: {out}");

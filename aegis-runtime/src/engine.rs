@@ -10,8 +10,8 @@ use smol_str::SmolStr;
 
 use aegis_compiler::ast::{ConstraintKind, SeverityLevel, Verdict};
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, CompiledRule, IRVerdict, StateId,
-    StateKind, StateMachine, TemporalKind, TransitionGuard,
+    CompiledConstraint, CompiledPolicy, CompiledRule, IRVerdict, StateId, StateKind, StateMachine,
+    TemporalKind, TransitionGuard,
 };
 
 use crate::eval::{self, EvalContext};
@@ -85,16 +85,12 @@ impl StateMachineInstance {
 
     /// Is this instance in a violating state?
     fn is_violated(&self) -> bool {
-        self.spec
-            .violating_states
-            .contains(&self.current_state)
+        self.spec.violating_states.contains(&self.current_state)
     }
 
     /// Is this instance in an accepting/satisfied state?
     fn is_satisfied(&self) -> bool {
-        self.spec
-            .accepting_states
-            .contains(&self.current_state)
+        self.spec.accepting_states.contains(&self.current_state)
     }
 
     /// Is this instance still active (not in a terminal state)?
@@ -132,12 +128,8 @@ impl StateMachineInstance {
                 continue;
             }
             let fires = match &transition.guard {
-                TransitionGuard::Predicate(expr) => {
-                    eval::eval(expr, ctx).is_truthy()
-                }
-                TransitionGuard::NegatedPredicate(expr) => {
-                    !eval::eval(expr, ctx).is_truthy()
-                }
+                TransitionGuard::Predicate(expr) => eval::eval(expr, ctx).is_truthy(),
+                TransitionGuard::NegatedPredicate(expr) => !eval::eval(expr, ctx).is_truthy(),
                 TransitionGuard::Always => true,
                 TransitionGuard::Timeout => false, // Already handled above
             };
@@ -321,11 +313,8 @@ impl PolicyEngine {
         // ── 2. Evaluate rules ────────────────────────────────────────
         for rule in &self.policy.rules {
             // Check if this rule applies to the event type
-            let applies = rule.on_events.is_empty()
-                || rule
-                    .on_events
-                    .iter()
-                    .any(|e| *e == event.event_type);
+            let applies =
+                rule.on_events.is_empty() || rule.on_events.iter().any(|e| *e == event.event_type);
 
             if !applies {
                 continue;
@@ -346,13 +335,10 @@ impl PolicyEngine {
             // Apply verdicts (last verdict wins, deny overrides all)
             for rule_verdict in &rule.verdicts {
                 let new_verdict = rule_verdict.verdict;
-                let new_reason = rule_verdict
-                    .message
-                    .as_ref()
-                    .map(|m| {
-                        let v = eval::eval(m, &eval_ctx);
-                        v.as_str().unwrap_or("").to_string()
-                    });
+                let new_reason = rule_verdict.message.as_ref().map(|m| {
+                    let v = eval::eval(m, &eval_ctx);
+                    v.as_str().unwrap_or("").to_string()
+                });
 
                 // Deny always wins over other verdicts
                 if new_verdict == Verdict::Deny || verdict == Verdict::Allow {
@@ -404,9 +390,7 @@ impl PolicyEngine {
                     kind: sm.spec.kind,
                     message: format!(
                         "Invariant `{}` in proof `{}` violated by event `{}`",
-                        sm.spec.invariant_name,
-                        sm.spec.name,
-                        event.event_type
+                        sm.spec.invariant_name, sm.spec.name, event.event_type
                     ),
                 });
                 // Invariant violation → deny (unless already denied)

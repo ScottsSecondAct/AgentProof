@@ -221,11 +221,7 @@ fn eval_ref(path: &RefPath, ctx: &EvalContext<'_>) -> Value {
                 })
                 .unwrap_or(Value::Null)
         }
-        RefRoot::Local(slot) => ctx
-            .locals
-            .get(&slot)
-            .cloned()
-            .unwrap_or(Value::Null),
+        RefRoot::Local(slot) => ctx.locals.get(&slot).cloned().unwrap_or(Value::Null),
     }
 }
 
@@ -241,9 +237,7 @@ fn eval_binary(op: BinaryOp, left: &Value, right: &Value) -> Value {
             (Value::Float(a), Value::Float(b)) => Value::Float(a + b),
             (Value::Int(a), Value::Float(b)) => Value::Float(*a as f64 + b),
             (Value::Float(a), Value::Int(b)) => Value::Float(a + *b as f64),
-            (Value::String(a), Value::String(b)) => {
-                Value::String(SmolStr::new(format!("{a}{b}")))
-            }
+            (Value::String(a), Value::String(b)) => Value::String(SmolStr::new(format!("{a}{b}"))),
             _ => Value::Null,
         },
         BinaryOp::Sub => match (left, right) {
@@ -280,7 +274,9 @@ fn eval_binary(op: BinaryOp, left: &Value, right: &Value) -> Value {
             values_compare(left, right),
             Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
         )),
-        BinaryOp::Gt => Value::Bool(values_compare(left, right) == Some(std::cmp::Ordering::Greater)),
+        BinaryOp::Gt => {
+            Value::Bool(values_compare(left, right) == Some(std::cmp::Ordering::Greater))
+        }
         BinaryOp::Ge => Value::Bool(matches!(
             values_compare(left, right),
             Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
@@ -349,9 +345,7 @@ fn eval_predicate(kind: PredicateKind, subject: &Value, argument: &Value) -> Val
             _ => Value::Bool(false),
         },
         PredicateKind::EndsWith => match (subject, argument) {
-            (Value::String(s), Value::String(suffix)) => {
-                Value::Bool(s.ends_with(suffix.as_str()))
-            }
+            (Value::String(s), Value::String(suffix)) => Value::Bool(s.ends_with(suffix.as_str())),
             _ => Value::Bool(false),
         },
     }
@@ -536,9 +530,7 @@ fn eval_builtin_call(name: &str, args: &[Value]) -> Value {
         "min" => {
             if args.len() == 2 {
                 match values_compare(&args[0], &args[1]) {
-                    Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal) => {
-                        args[0].clone()
-                    }
+                    Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal) => args[0].clone(),
                     Some(std::cmp::Ordering::Greater) => args[1].clone(),
                     None => Value::Null,
                 }
@@ -577,7 +569,11 @@ fn eval_method_call(object: &Value, method: &str, args: &[Value]) -> Value {
         (Value::String(s), "is_empty") => Value::Bool(s.is_empty()),
         (Value::String(s), "split") => {
             let sep = args.first().and_then(|a| a.as_str()).unwrap_or(",");
-            Value::List(s.split(sep).map(|p| Value::String(SmolStr::new(p))).collect())
+            Value::List(
+                s.split(sep)
+                    .map(|p| Value::String(SmolStr::new(p)))
+                    .collect(),
+            )
         }
         (Value::List(l), "len" | "length") => Value::Int(l.len() as i64),
         (Value::List(l), "is_empty") => Value::Bool(l.is_empty()),

@@ -35,10 +35,7 @@ pub enum Ty {
     Union(Vec<Ty>),
 
     /// A function type: `(params) -> return`
-    Function {
-        params: Vec<Ty>,
-        ret: Box<Ty>,
-    },
+    Function { params: Vec<Ty>, ret: Box<Ty> },
 
     /// Verdict type — the result of a rule evaluation
     Verdict,
@@ -220,7 +217,10 @@ impl TypeEnv {
                 name: SmolStr::new("Event"),
                 fields: vec![
                     (SmolStr::new("type"), Ty::Primitive(PrimitiveType::String)),
-                    (SmolStr::new("timestamp"), Ty::Primitive(PrimitiveType::Duration)),
+                    (
+                        SmolStr::new("timestamp"),
+                        Ty::Primitive(PrimitiveType::Duration),
+                    ),
                 ],
                 type_params: vec![],
             }),
@@ -363,9 +363,15 @@ mod tests {
     #[test]
     fn element_type_for_list_and_set() {
         assert_eq!(Ty::List(Box::new(int())).element_type(), Some(&int()));
-        assert_eq!(Ty::Set(Box::new(string_ty())).element_type(), Some(&string_ty()));
+        assert_eq!(
+            Ty::Set(Box::new(string_ty())).element_type(),
+            Some(&string_ty())
+        );
         assert_eq!(int().element_type(), None);
-        assert_eq!(Ty::Map(Box::new(int()), Box::new(string_ty())).element_type(), None);
+        assert_eq!(
+            Ty::Map(Box::new(int()), Box::new(string_ty())).element_type(),
+            None
+        );
     }
 
     #[test]
@@ -573,8 +579,12 @@ mod tests {
     #[test]
     fn type_ids_increment_sequentially() {
         let mut env = TypeEnv::new();
-        let Ty::Var(TypeId(id1)) = env.fresh_type_var() else { panic!() };
-        let Ty::Var(TypeId(id2)) = env.fresh_type_var() else { panic!() };
+        let Ty::Var(TypeId(id1)) = env.fresh_type_var() else {
+            panic!()
+        };
+        let Ty::Var(TypeId(id2)) = env.fresh_type_var() else {
+            panic!()
+        };
         assert_eq!(id2, id1 + 1);
     }
 }

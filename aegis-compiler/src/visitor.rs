@@ -41,14 +41,8 @@ pub trait RuleContext {
 }
 
 fn span_from(ctx: &dyn RuleContext) -> Span {
-    let start = ctx
-        .start_token()
-        .map(|t| t.start_byte())
-        .unwrap_or(0);
-    let end = ctx
-        .stop_token()
-        .map(|t| t.stop_byte() + 1)
-        .unwrap_or(start);
+    let start = ctx.start_token().map(|t| t.start_byte()).unwrap_or(0);
+    let end = ctx.stop_token().map(|t| t.stop_byte() + 1).unwrap_or(start);
     Span::new(start, end)
 }
 
@@ -99,11 +93,7 @@ impl<'src> AstBuilder<'src> {
     // ═══════════════════════════════════════════════════════════════════
 
     /// Visit the top-level `program` rule: `declaration* EOF`
-    pub fn build_program(
-        &self,
-        declarations: Vec<DeclContext<'_>>,
-        span: Span,
-    ) -> Program {
+    pub fn build_program(&self, declarations: Vec<DeclContext<'_>>, span: Span) -> Program {
         let decls = declarations
             .into_iter()
             .filter_map(|d| self.build_declaration(d))
@@ -203,9 +193,7 @@ impl<'src> AstBuilder<'src> {
             }
             PolicyMemberKind::Rule(r) => PolicyMember::Rule(self.build_rule(r)),
             PolicyMemberKind::Proof(p) => PolicyMember::Proof(self.build_proof(p)),
-            PolicyMemberKind::Constraint(c) => {
-                PolicyMember::Constraint(self.build_constraint(c))
-            }
+            PolicyMemberKind::Constraint(c) => PolicyMember::Constraint(self.build_constraint(c)),
             PolicyMemberKind::Binding(b) => PolicyMember::Binding(self.build_binding(b)),
             PolicyMemberKind::Function(f) => PolicyMember::Function(self.build_function(f)),
         }
@@ -254,9 +242,7 @@ impl<'src> AstBuilder<'src> {
             RuleClauseKind::Verdict(v) => RuleClause::Verdict(self.build_verdict(v)),
             RuleClauseKind::Action(a) => RuleClause::Action(self.build_action(a)),
             RuleClauseKind::Severity(level) => RuleClause::Severity(level),
-            RuleClauseKind::Constraint(c) => {
-                RuleClause::Constraint(self.build_constraint(c))
-            }
+            RuleClauseKind::Constraint(c) => RuleClause::Constraint(self.build_constraint(c)),
         }
     }
 
@@ -270,9 +256,7 @@ impl<'src> AstBuilder<'src> {
     fn build_action(&self, ctx: ActionContext<'_>) -> ActionClause {
         let args = match ctx.args {
             ActionArgsContext::None => ActionArgs::None,
-            ActionArgsContext::Positional(expr) => {
-                ActionArgs::Positional(self.build_expr(expr))
-            }
+            ActionArgsContext::Positional(expr) => ActionArgs::Positional(self.build_expr(expr)),
             ActionArgsContext::Named(pairs) => {
                 let args = pairs
                     .into_iter()
@@ -369,29 +353,19 @@ impl<'src> AstBuilder<'src> {
         let span = ctx.span;
         let ty = match ctx.kind {
             TypeKind::Primitive(prim) => Type::Primitive(prim),
-            TypeKind::List(inner) => {
-                Type::List(Box::new(self.build_type(*inner)))
-            }
+            TypeKind::List(inner) => Type::List(Box::new(self.build_type(*inner))),
             TypeKind::Map(key, val) => Type::Map(
                 Box::new(self.build_type(*key)),
                 Box::new(self.build_type(*val)),
             ),
-            TypeKind::Set(inner) => {
-                Type::Set(Box::new(self.build_type(*inner)))
-            }
+            TypeKind::Set(inner) => Type::Set(Box::new(self.build_type(*inner))),
             TypeKind::Named { name, type_args } => Type::Named {
                 name: self.build_qualified_name(name),
-                type_args: type_args
-                    .into_iter()
-                    .map(|t| self.build_type(t))
-                    .collect(),
+                type_args: type_args.into_iter().map(|t| self.build_type(t)).collect(),
             },
-            TypeKind::Union(members) => Type::Union(
-                members
-                    .into_iter()
-                    .map(|m| self.build_type(m))
-                    .collect(),
-            ),
+            TypeKind::Union(members) => {
+                Type::Union(members.into_iter().map(|m| self.build_type(m)).collect())
+            }
             TypeKind::Paren(inner) => return self.build_type(*inner),
         };
         Spanned::new(ty, span)
@@ -436,13 +410,9 @@ impl<'src> AstBuilder<'src> {
         let expr = match ctx.kind {
             ExprKind::Literal(lit) => Expr::Literal(self.build_literal(lit)),
 
-            ExprKind::Identifier(name) => {
-                Expr::Identifier(self.build_qualified_name(name))
-            }
+            ExprKind::Identifier(name) => Expr::Identifier(self.build_qualified_name(name)),
 
-            ExprKind::Context(name) => {
-                Expr::Context(self.build_qualified_name(name))
-            }
+            ExprKind::Context(name) => Expr::Context(self.build_qualified_name(name)),
 
             ExprKind::FieldAccess { object, field } => Expr::FieldAccess {
                 object: Box::new(self.build_expr(*object)),
@@ -456,10 +426,7 @@ impl<'src> AstBuilder<'src> {
 
             ExprKind::Call { callee, args } => Expr::Call {
                 callee: Box::new(self.build_expr(*callee)),
-                args: args
-                    .into_iter()
-                    .map(|a| self.build_argument(a))
-                    .collect(),
+                args: args.into_iter().map(|a| self.build_argument(a)).collect(),
             },
 
             ExprKind::MethodCall {
@@ -469,28 +436,36 @@ impl<'src> AstBuilder<'src> {
             } => Expr::MethodCall {
                 object: Box::new(self.build_expr(*object)),
                 method: ident_from(method),
-                args: args
-                    .into_iter()
-                    .map(|a| self.build_argument(a))
-                    .collect(),
+                args: args.into_iter().map(|a| self.build_argument(a)).collect(),
             },
 
-            ExprKind::Binary { op, op_span, left, right } => Expr::Binary {
+            ExprKind::Binary {
+                op,
+                op_span,
+                left,
+                right,
+            } => Expr::Binary {
                 op: Spanned::new(op, op_span),
                 left: Box::new(self.build_expr(*left)),
                 right: Box::new(self.build_expr(*right)),
             },
 
-            ExprKind::Unary { op, op_span, operand } => Expr::Unary {
+            ExprKind::Unary {
+                op,
+                op_span,
+                operand,
+            } => Expr::Unary {
                 op: Spanned::new(op, op_span),
                 operand: Box::new(self.build_expr(*operand)),
             },
 
-            ExprKind::Temporal(temporal) => {
-                Expr::Temporal(self.build_temporal(*temporal))
-            }
+            ExprKind::Temporal(temporal) => Expr::Temporal(self.build_temporal(*temporal)),
 
-            ExprKind::Predicate { kind, subject, argument } => Expr::Predicate {
+            ExprKind::Predicate {
+                kind,
+                subject,
+                argument,
+            } => Expr::Predicate {
                 kind,
                 subject: Box::new(self.build_expr(*subject)),
                 argument: Box::new(self.build_expr(*argument)),
@@ -513,28 +488,23 @@ impl<'src> AstBuilder<'src> {
 
             ExprKind::Match { scrutinee, arms } => Expr::Match {
                 scrutinee: Box::new(self.build_expr(*scrutinee)),
-                arms: arms
-                    .into_iter()
-                    .map(|a| self.build_match_arm(a))
-                    .collect(),
+                arms: arms.into_iter().map(|a| self.build_match_arm(a)).collect(),
             },
 
-            ExprKind::Lambda(lambda) => {
-                Expr::Lambda(self.build_lambda(*lambda))
-            }
+            ExprKind::Lambda(lambda) => Expr::Lambda(self.build_lambda(*lambda)),
 
-            ExprKind::List(elements) => Expr::List(
-                elements
-                    .into_iter()
-                    .map(|e| self.build_expr(e))
-                    .collect(),
-            ),
+            ExprKind::List(elements) => {
+                Expr::List(elements.into_iter().map(|e| self.build_expr(e)).collect())
+            }
 
             ExprKind::Object(fields) => Expr::Object(
                 fields
                     .into_iter()
                     .map(|f| ObjectField {
-                        key: Spanned::new(SmolStr::new(f.key.text()), Span::new(f.key.start_byte(), f.key.stop_byte() + 1)),
+                        key: Spanned::new(
+                            SmolStr::new(f.key.text()),
+                            Span::new(f.key.start_byte(), f.key.stop_byte() + 1),
+                        ),
                         value: self.build_expr(f.value),
                     })
                     .collect(),
@@ -566,12 +536,10 @@ impl<'src> AstBuilder<'src> {
                 condition: Box::new(self.build_expr(*condition)),
                 within: within.map(|w| Box::new(self.build_expr(*w))),
             },
-            TemporalContext::Eventually { condition, within } => {
-                TemporalExpr::Eventually {
-                    condition: Box::new(self.build_expr(*condition)),
-                    within: within.map(|w| Box::new(self.build_expr(*w))),
-                }
-            }
+            TemporalContext::Eventually { condition, within } => TemporalExpr::Eventually {
+                condition: Box::new(self.build_expr(*condition)),
+                within: within.map(|w| Box::new(self.build_expr(*w))),
+            },
             TemporalContext::Never { condition } => TemporalExpr::Never {
                 condition: Box::new(self.build_expr(*condition)),
             },
@@ -614,9 +582,7 @@ impl<'src> AstBuilder<'src> {
                 let built = self.build_expr(e);
                 MatchResult::Expr(built.node)
             }
-            MatchResultKind::Verdict(v) => {
-                MatchResult::Verdict(self.build_verdict(v))
-            }
+            MatchResultKind::Verdict(v) => MatchResult::Verdict(self.build_verdict(v)),
             MatchResultKind::Block(stmts) => {
                 let built = stmts
                     .into_iter()
@@ -671,9 +637,7 @@ impl<'src> AstBuilder<'src> {
                 key: ident_from(key),
                 pattern: self.build_pattern(pattern),
             },
-            PatternFieldContext::Shorthand(token) => {
-                PatternField::Shorthand(ident_from(token))
-            }
+            PatternFieldContext::Shorthand(token) => PatternField::Shorthand(ident_from(token)),
             PatternFieldContext::Wildcard(span) => PatternField::Wildcard(span),
         }
     }
@@ -704,19 +668,13 @@ impl<'src> AstBuilder<'src> {
 
     fn build_block_statement(&self, ctx: BlockStmtContext<'_>) -> BlockStatement {
         match ctx.kind {
-            BlockStmtKind::Binding(b) => {
-                BlockStatement::Binding(self.build_binding(b))
-            }
+            BlockStmtKind::Binding(b) => BlockStatement::Binding(self.build_binding(b)),
             BlockStmtKind::Expr(e) => {
                 let built = self.build_expr(e);
                 BlockStatement::Expr(built.node)
             }
-            BlockStmtKind::Verdict(v) => {
-                BlockStatement::Verdict(self.build_verdict(v))
-            }
-            BlockStmtKind::Action(a) => {
-                BlockStatement::Action(self.build_action(a))
-            }
+            BlockStmtKind::Verdict(v) => BlockStatement::Verdict(self.build_verdict(v)),
+            BlockStmtKind::Action(a) => BlockStatement::Action(self.build_action(a)),
         }
     }
 
@@ -772,11 +730,7 @@ impl<'src> AstBuilder<'src> {
     }
 
     fn build_qualified_name(&self, ctx: &QualifiedNameContext<'_>) -> QualifiedName {
-        let segments: Vec<Ident> = ctx
-            .segments
-            .iter()
-            .map(|s| ident_from(*s))
-            .collect();
+        let segments: Vec<Ident> = ctx.segments.iter().map(|s| ident_from(*s)).collect();
         let span = if segments.is_empty() {
             Span::DUMMY
         } else {
@@ -787,9 +741,7 @@ impl<'src> AstBuilder<'src> {
 
     fn build_scope_target(&self, ctx: ScopeTargetContext<'_>) -> ScopeTarget {
         match ctx {
-            ScopeTargetContext::Name(name) => {
-                ScopeTarget::Name(self.build_qualified_name(name))
-            }
+            ScopeTargetContext::Name(name) => ScopeTarget::Name(self.build_qualified_name(name)),
             ScopeTargetContext::Literal(token) => ScopeTarget::Literal(Spanned::new(
                 SmolStr::new(self.unquote_string(token.text())),
                 Span::new(token.start_byte(), token.stop_byte() + 1),

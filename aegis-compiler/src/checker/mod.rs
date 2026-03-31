@@ -100,13 +100,8 @@ impl TypeChecker {
                     .map(|p| (p.name.node.clone(), self.resolve_type(&p.ty.node)))
                     .collect();
                 let ret = self.resolve_type(&fd.return_type.node);
-                self.env.define_function(
-                    fd.name.node.clone(),
-                    FunctionSig {
-                        params,
-                        ret,
-                    },
-                );
+                self.env
+                    .define_function(fd.name.node.clone(), FunctionSig { params, ret });
             }
             Declaration::Policy(pd) => {
                 // Register the policy name as a type (for `extends`)
@@ -184,12 +179,7 @@ impl TypeChecker {
         self.env.pop_scope();
     }
 
-    fn check_policy_member(
-        &mut self,
-        member: &PolicyMember,
-        span: Span,
-        ctx: CheckContext,
-    ) {
+    fn check_policy_member(&mut self, member: &PolicyMember, span: Span, ctx: CheckContext) {
         match member {
             PolicyMember::Severity(_) => {} // Structurally valid by grammar
             PolicyMember::Scope(_targets) => {
@@ -221,11 +211,7 @@ impl TypeChecker {
             .iter()
             .any(|c| matches!(c.node, RuleClause::Verdict(_)));
         if !has_verdict {
-            let span = rule
-                .clauses
-                .last()
-                .map(|c| c.span)
-                .unwrap_or(Span::DUMMY);
+            let span = rule.clauses.last().map(|c| c.span).unwrap_or(Span::DUMMY);
             self.diag.emit(Diagnostic::warning(
                 span,
                 DiagnosticCode::E0300,
@@ -241,12 +227,7 @@ impl TypeChecker {
         self.env.pop_scope();
     }
 
-    fn check_rule_clause(
-        &mut self,
-        clause: &RuleClause,
-        span: Span,
-        ctx: CheckContext,
-    ) {
+    fn check_rule_clause(&mut self, clause: &RuleClause, span: Span, ctx: CheckContext) {
         match clause {
             RuleClause::When(expr) => {
                 let ty = self.check_expr(&expr.node, expr.span, ctx);
@@ -296,12 +277,7 @@ impl TypeChecker {
     //  Constraint checking
     // ═══════════════════════════════════════════════════════════════════
 
-    fn check_constraint(
-        &mut self,
-        constraint: &ConstraintDecl,
-        _span: Span,
-        ctx: CheckContext,
-    ) {
+    fn check_constraint(&mut self, constraint: &ConstraintDecl, _span: Span, ctx: CheckContext) {
         let limit_ty = self.check_expr(&constraint.limit.node, constraint.limit.span, ctx);
         if !limit_ty.is_numeric() && !limit_ty.is_error() {
             self.diag.emit(Diagnostic::error(
@@ -352,16 +328,11 @@ impl TypeChecker {
         for cond in &inv.conditions {
             let ty = self.check_expr(&cond.node, cond.span, ctx);
             // Invariant conditions should be boolean or temporal
-            if !ty.is_bool()
-                && !matches!(ty, Ty::Temporal)
-                && !ty.is_error()
-            {
+            if !ty.is_bool() && !matches!(ty, Ty::Temporal) && !ty.is_error() {
                 self.diag.emit(Diagnostic::error(
                     cond.span,
                     DiagnosticCode::E0200,
-                    format!(
-                        "invariant condition must be boolean or temporal, found `{ty}`"
-                    ),
+                    format!("invariant condition must be boolean or temporal, found `{ty}`"),
                 ));
             }
         }
@@ -480,10 +451,7 @@ impl TypeChecker {
                             self.diag.emit(Diagnostic::error(
                                 field.span,
                                 DiagnosticCode::E0108,
-                                format!(
-                                    "field `{}` not found on type `{}`",
-                                    field.node, st.name
-                                ),
+                                format!("field `{}` not found on type `{}`", field.node, st.name),
                             ));
                             Ty::Error
                         }
@@ -546,8 +514,7 @@ impl TypeChecker {
                             }
                             // Check argument types
                             for (arg, (_, expected_ty)) in args.iter().zip(sig.params.iter()) {
-                                let arg_ty =
-                                    self.check_expr(&arg.value.node, arg.value.span, ctx);
+                                let arg_ty = self.check_expr(&arg.value.node, arg.value.span, ctx);
                                 if !arg_ty.is_subtype_of(expected_ty) && !arg_ty.is_error() {
                                     self.diag.emit(Diagnostic::type_mismatch(
                                         arg.value.span,
@@ -609,9 +576,7 @@ impl TypeChecker {
                             self.diag.emit(Diagnostic::error(
                                 operand.span,
                                 DiagnosticCode::E0102,
-                                format!(
-                                    "unary `-` requires numeric operand, found `{operand_ty}`"
-                                ),
+                                format!("unary `-` requires numeric operand, found `{operand_ty}`"),
                             ));
                         }
                         operand_ty
@@ -619,9 +584,7 @@ impl TypeChecker {
                 }
             }
 
-            Expr::Temporal(temporal) => {
-                self.check_temporal(temporal, span, ctx)
-            }
+            Expr::Temporal(temporal) => self.check_temporal(temporal, span, ctx),
 
             Expr::Predicate {
                 kind,
@@ -634,10 +597,7 @@ impl TypeChecker {
                 match kind {
                     PredicateKind::Contains => {
                         // string contains string, or collection contains element
-                        if !subj_ty.is_string()
-                            && !subj_ty.is_collection()
-                            && !subj_ty.is_error()
-                        {
+                        if !subj_ty.is_string() && !subj_ty.is_collection() && !subj_ty.is_error() {
                             self.diag.emit(Diagnostic::error(
                                 subject.span,
                                 DiagnosticCode::E0107,
@@ -708,8 +668,7 @@ impl TypeChecker {
                 for param in &predicate.params {
                     self.env.bind(param.name.node.clone(), elem_ty.clone());
                 }
-                let body_ty =
-                    self.check_expr(&predicate.body.node, predicate.body.span, ctx);
+                let body_ty = self.check_expr(&predicate.body.node, predicate.body.span, ctx);
                 if !body_ty.is_bool() && !body_ty.is_error() {
                     self.diag.emit(Diagnostic::error(
                         predicate.body.span,
@@ -732,8 +691,7 @@ impl TypeChecker {
                     for param in &lambda.params {
                         self.env.bind(param.name.node.clone(), elem_ty.clone());
                     }
-                    let body_ty =
-                        self.check_expr(&lambda.body.node, lambda.body.span, ctx);
+                    let body_ty = self.check_expr(&lambda.body.node, lambda.body.span, ctx);
                     if !body_ty.is_bool() && !body_ty.is_error() {
                         self.diag.emit(Diagnostic::error(
                             lambda.body.span,
@@ -747,8 +705,7 @@ impl TypeChecker {
             }
 
             Expr::Match { scrutinee, arms } => {
-                let _scrut_ty =
-                    self.check_expr(&scrutinee.node, scrutinee.span, ctx);
+                let _scrut_ty = self.check_expr(&scrutinee.node, scrutinee.span, ctx);
                 let mut result_ty: Option<Ty> = None;
                 for arm in arms {
                     // Pattern checking deferred — future pass
@@ -779,8 +736,7 @@ impl TypeChecker {
                         .unwrap_or_else(|| self.env.fresh_type_var());
                     self.env.bind(param.name.node.clone(), ty);
                 }
-                let body_ty =
-                    self.check_expr(&lambda.body.node, lambda.body.span, ctx);
+                let body_ty = self.check_expr(&lambda.body.node, lambda.body.span, ctx);
                 self.env.pop_scope();
                 body_ty
             }
@@ -793,11 +749,8 @@ impl TypeChecker {
                 for elem in &elements[1..] {
                     let ty = self.check_expr(&elem.node, elem.span, ctx);
                     if !ty.is_subtype_of(&first_ty) && !ty.is_error() {
-                        self.diag.emit(Diagnostic::type_mismatch(
-                            elem.span,
-                            &first_ty,
-                            &ty,
-                        ));
+                        self.diag
+                            .emit(Diagnostic::type_mismatch(elem.span, &first_ty, &ty));
                     }
                 }
                 Ty::List(Box::new(first_ty))
@@ -828,12 +781,7 @@ impl TypeChecker {
     //  Temporal expression checking — the formal verification core
     // ═══════════════════════════════════════════════════════════════════
 
-    fn check_temporal(
-        &mut self,
-        temporal: &TemporalExpr,
-        span: Span,
-        ctx: CheckContext,
-    ) -> Ty {
+    fn check_temporal(&mut self, temporal: &TemporalExpr, span: Span, ctx: CheckContext) -> Ty {
         if !ctx.in_proof {
             let op_name = match temporal {
                 TemporalExpr::Always { .. } => "always",
@@ -867,8 +815,7 @@ impl TypeChecker {
         match temporal {
             TemporalExpr::Always { condition, within }
             | TemporalExpr::Eventually { condition, within } => {
-                let cond_ty =
-                    self.check_expr(&condition.node, condition.span, inner_ctx);
+                let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
                 if !cond_ty.is_bool() && !cond_ty.is_error() {
                     let op = if matches!(temporal, TemporalExpr::Always { .. }) {
                         "always"
@@ -889,8 +836,7 @@ impl TypeChecker {
             }
 
             TemporalExpr::Never { condition } => {
-                let cond_ty =
-                    self.check_expr(&condition.node, condition.span, inner_ctx);
+                let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
                 if !cond_ty.is_bool() && !cond_ty.is_error() {
                     self.diag
                         .emit(Diagnostic::temporal_requires_bool(condition.span, "never"));
@@ -900,11 +846,12 @@ impl TypeChecker {
 
             TemporalExpr::Until { hold, release } => {
                 let hold_ty = self.check_expr(&hold.node, hold.span, inner_ctx);
-                let release_ty =
-                    self.check_expr(&release.node, release.span, inner_ctx);
+                let release_ty = self.check_expr(&release.node, release.span, inner_ctx);
                 if !hold_ty.is_bool() && !hold_ty.is_error() {
-                    self.diag
-                        .emit(Diagnostic::temporal_requires_bool(hold.span, "until (left)"));
+                    self.diag.emit(Diagnostic::temporal_requires_bool(
+                        hold.span,
+                        "until (left)",
+                    ));
                 }
                 if !release_ty.is_bool() && !release_ty.is_error() {
                     self.diag.emit(Diagnostic::temporal_requires_bool(
@@ -916,8 +863,7 @@ impl TypeChecker {
             }
 
             TemporalExpr::Next { condition } => {
-                let cond_ty =
-                    self.check_expr(&condition.node, condition.span, inner_ctx);
+                let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
                 if !cond_ty.is_bool() && !cond_ty.is_error() {
                     self.diag
                         .emit(Diagnostic::temporal_requires_bool(condition.span, "next"));
@@ -927,8 +873,7 @@ impl TypeChecker {
 
             TemporalExpr::Before { first, second } => {
                 let first_ty = self.check_expr(&first.node, first.span, inner_ctx);
-                let second_ty =
-                    self.check_expr(&second.node, second.span, inner_ctx);
+                let second_ty = self.check_expr(&second.node, second.span, inner_ctx);
                 if !first_ty.is_bool() && !first_ty.is_error() {
                     self.diag
                         .emit(Diagnostic::temporal_requires_bool(first.span, "before"));
@@ -941,10 +886,8 @@ impl TypeChecker {
             }
 
             TemporalExpr::After { condition, trigger } => {
-                let cond_ty =
-                    self.check_expr(&condition.node, condition.span, inner_ctx);
-                let trig_ty =
-                    self.check_expr(&trigger.node, trigger.span, inner_ctx);
+                let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
+                let trig_ty = self.check_expr(&trigger.node, trigger.span, inner_ctx);
                 if !cond_ty.is_bool() && !cond_ty.is_error() {
                     self.diag
                         .emit(Diagnostic::temporal_requires_bool(condition.span, "after"));
@@ -962,13 +905,7 @@ impl TypeChecker {
     //  Binary operator checking
     // ═══════════════════════════════════════════════════════════════════
 
-    fn check_binary_op(
-        &mut self,
-        op: &BinaryOp,
-        left: &Ty,
-        right: &Ty,
-        span: Span,
-    ) -> Ty {
+    fn check_binary_op(&mut self, op: &BinaryOp, left: &Ty, right: &Ty, span: Span) -> Ty {
         if left.is_error() || right.is_error() {
             return Ty::Error;
         }
@@ -1057,12 +994,7 @@ impl TypeChecker {
         }
     }
 
-    fn check_match_result(
-        &mut self,
-        result: &MatchResult,
-        span: Span,
-        ctx: CheckContext,
-    ) -> Ty {
+    fn check_match_result(&mut self, result: &MatchResult, span: Span, ctx: CheckContext) -> Ty {
         match result {
             MatchResult::Expr(expr) => self.check_expr(expr, span, ctx),
             MatchResult::Verdict(_) => Ty::Verdict,
@@ -1129,7 +1061,8 @@ impl TypeChecker {
                 }
             }
             crate::ast::nodes::Type::Union(members) => {
-                let resolved: Vec<Ty> = members.iter().map(|m| self.resolve_type(&m.node)).collect();
+                let resolved: Vec<Ty> =
+                    members.iter().map(|m| self.resolve_type(&m.node)).collect();
                 Ty::Union(resolved)
             }
         }

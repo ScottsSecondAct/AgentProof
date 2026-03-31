@@ -4,7 +4,7 @@
 //! on the resulting `CompiledPolicy` IR — rules, constraints, state machines.
 
 use aegis_compiler::ast::*;
-use aegis_compiler::ir::{TemporalKind, StateKind};
+use aegis_compiler::ir::{StateKind, TemporalKind};
 use aegis_compiler::lower;
 
 // ── AST builder helpers ───────────────────────────────────────────────────────
@@ -26,7 +26,10 @@ fn int_lit_expr(n: i64) -> Spanned<Expr> {
 }
 
 fn dur_lit_expr(value: u64, unit: DurationUnit) -> Spanned<Expr> {
-    Spanned::dummy(Expr::Literal(Literal::Duration(DurationLit { value, unit })))
+    Spanned::dummy(Expr::Literal(Literal::Duration(DurationLit {
+        value,
+        unit,
+    })))
 }
 
 fn deny_verdict() -> Spanned<RuleClause> {
@@ -50,7 +53,9 @@ fn when_clause(expr: Spanned<Expr>) -> Spanned<RuleClause> {
 fn rule_member(event: &str, clauses: Vec<Spanned<RuleClause>>) -> Spanned<PolicyMember> {
     Spanned::dummy(PolicyMember::Rule(RuleDecl {
         annotations: vec![],
-        on_events: vec![ScopeTarget::Literal(Spanned::dummy(smol_str::SmolStr::new(event)))],
+        on_events: vec![ScopeTarget::Literal(Spanned::dummy(
+            smol_str::SmolStr::new(event),
+        ))],
         clauses,
     }))
 }
@@ -258,8 +263,12 @@ fn annotation_with_string_value_in_metadata() {
         vec![],
     )]));
     let annotations = &policies[0].metadata.annotations;
-    assert!(annotations.iter().any(|(k, v)| k.as_str() == "author" && v.as_str() == "alice"));
-    assert!(annotations.iter().any(|(k, v)| k.as_str() == "version" && v.as_str() == "1.0"));
+    assert!(annotations
+        .iter()
+        .any(|(k, v)| k.as_str() == "author" && v.as_str() == "alice"));
+    assert!(annotations
+        .iter()
+        .any(|(k, v)| k.as_str() == "version" && v.as_str() == "1.0"));
 }
 
 #[test]
@@ -514,7 +523,11 @@ fn non_constant_limit_produces_error_and_no_constraint() {
 fn proof_with_always_produces_one_state_machine() {
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
-        vec![proof_member("Safety", "NoHTTP", temporal_always(bool_expr()))],
+        vec![proof_member(
+            "Safety",
+            "NoHTTP",
+            temporal_always(bool_expr()),
+        )],
     )]));
     assert_eq!(policies[0].state_machines.len(), 1);
 }
@@ -523,7 +536,11 @@ fn proof_with_always_produces_one_state_machine() {
 fn always_state_machine_kind_is_always() {
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
-        vec![proof_member("Safety", "NoHTTP", temporal_always(bool_expr()))],
+        vec![proof_member(
+            "Safety",
+            "NoHTTP",
+            temporal_always(bool_expr()),
+        )],
     )]));
     assert_eq!(policies[0].state_machines[0].kind, TemporalKind::Always);
 }
@@ -532,7 +549,11 @@ fn always_state_machine_kind_is_always() {
 fn always_state_machine_name_matches_proof_name() {
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
-        vec![proof_member("MySafety", "MyInvariant", temporal_always(bool_expr()))],
+        vec![proof_member(
+            "MySafety",
+            "MyInvariant",
+            temporal_always(bool_expr()),
+        )],
     )]));
     let sm = &policies[0].state_machines[0];
     assert_eq!(sm.name.as_str(), "MySafety");
@@ -591,10 +612,7 @@ fn eventually_without_within_has_no_deadline() {
 
 #[test]
 fn eventually_with_within_has_deadline() {
-    let expr = temporal_eventually_within(
-        bool_expr(),
-        dur_lit_expr(24, DurationUnit::Hours),
-    );
+    let expr = temporal_eventually_within(bool_expr(), dur_lit_expr(24, DurationUnit::Hours));
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
         vec![proof_member("P", "I", expr)],
@@ -607,10 +625,7 @@ fn eventually_with_within_has_deadline() {
 
 #[test]
 fn eventually_with_within_has_three_states() {
-    let expr = temporal_eventually_within(
-        bool_expr(),
-        dur_lit_expr(5, DurationUnit::Minutes),
-    );
+    let expr = temporal_eventually_within(bool_expr(), dur_lit_expr(5, DurationUnit::Minutes));
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
         vec![proof_member("P", "I", expr)],
@@ -620,18 +635,12 @@ fn eventually_with_within_has_three_states() {
 
 #[test]
 fn always_with_within_has_deadline() {
-    let expr = temporal_always_within(
-        bool_expr(),
-        dur_lit_expr(10, DurationUnit::Seconds),
-    );
+    let expr = temporal_always_within(bool_expr(), dur_lit_expr(10, DurationUnit::Seconds));
     let (policies, _) = lower::compile(&program(vec![simple_policy(
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]));
-    assert_eq!(
-        policies[0].state_machines[0].deadline_millis,
-        Some(10_000)
-    );
+    assert_eq!(policies[0].state_machines[0].deadline_millis, Some(10_000));
 }
 
 #[test]
@@ -688,7 +697,11 @@ fn state_machine_ids_are_unique_across_proofs() {
     let (policies, _) = lower::compile(&prog);
     let sm_ids: Vec<u32> = policies[0].state_machines.iter().map(|s| s.id).collect();
     let unique: std::collections::HashSet<_> = sm_ids.iter().collect();
-    assert_eq!(unique.len(), sm_ids.len(), "state machine IDs should be unique");
+    assert_eq!(
+        unique.len(),
+        sm_ids.len(),
+        "state machine IDs should be unique"
+    );
 }
 
 #[test]

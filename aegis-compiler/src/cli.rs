@@ -33,7 +33,10 @@ pub fn cli_main(args: &[String]) -> i32 {
         "dump" => cmd_dump(&args[2..]),
         "inspect" => cmd_inspect(&args[2..]),
         "version" | "--version" | "-V" => {
-            println!("aegisc {} (Aegis policy compiler)", env!("CARGO_PKG_VERSION"));
+            println!(
+                "aegisc {} (Aegis policy compiler)",
+                env!("CARGO_PKG_VERSION")
+            );
             0
         }
         "help" | "--help" | "-h" => {
@@ -306,9 +309,9 @@ fn run_demo_pipeline(
     _source: &str,
     filename: &str,
 ) -> Result<Vec<crate::ir::CompiledPolicy>, String> {
-    use smol_str::SmolStr;
     use crate::ast::*;
     use crate::checker::TypeChecker;
+    use smol_str::SmolStr;
 
     // Construct a minimal program to exercise the pipeline.
     // In production, this comes from the ANTLR4 parser + visitor.
@@ -319,7 +322,10 @@ fn run_demo_pipeline(
                 name: Spanned::new(SmolStr::new("DemoPolicy"), Span::new(0, 10)),
                 extends: None,
                 members: vec![
-                    Spanned::new(PolicyMember::Severity(SeverityLevel::High), Span::new(12, 25)),
+                    Spanned::new(
+                        PolicyMember::Severity(SeverityLevel::High),
+                        Span::new(12, 25),
+                    ),
                     Spanned::new(
                         PolicyMember::Scope(vec![ScopeTarget::Name(QualifiedName {
                             segments: vec![Spanned::new(

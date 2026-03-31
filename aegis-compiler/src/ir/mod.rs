@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
 use crate::ast::{
-    ActionVerb, BinaryOp, ConstraintKind, DurationLit, Literal, PredicateKind,
-    QuantifierKind, SeverityLevel, UnaryOp, Verdict,
+    ActionVerb, BinaryOp, ConstraintKind, DurationLit, Literal, PredicateKind, QuantifierKind,
+    SeverityLevel, UnaryOp, Verdict,
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -534,57 +534,66 @@ mod tests {
 
     #[test]
     fn always_has_two_states() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states.len(), 2);
     }
 
     #[test]
     fn always_state_0_is_active() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states[0].kind, StateKind::Active);
         assert_eq!(sm.states[0].label.as_str(), "satisfied");
     }
 
     #[test]
     fn always_state_1_is_violated() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states[1].kind, StateKind::Violated);
         assert_eq!(sm.states[1].label.as_str(), "violated");
     }
 
     #[test]
     fn always_initial_state_is_0() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.initial_state, 0);
     }
 
     #[test]
     fn always_accepting_states_is_0() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.accepting_states, vec![0]);
     }
 
     #[test]
     fn always_violating_states_is_1() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.violating_states, vec![1]);
     }
 
     #[test]
     fn always_kind_is_always() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.kind, TemporalKind::Always);
     }
 
     #[test]
     fn always_has_two_transitions() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.transitions.len(), 2);
     }
 
     #[test]
     fn always_first_transition_is_self_loop_on_predicate() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         let t = &sm.transitions[0];
         assert_eq!(t.from, 0);
         assert_eq!(t.to, 0);
@@ -593,7 +602,8 @@ mod tests {
 
     #[test]
     fn always_second_transition_goes_to_violated_on_negated() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         let t = &sm.transitions[1];
         assert_eq!(t.from, 0);
         assert_eq!(t.to, 1);
@@ -602,13 +612,19 @@ mod tests {
 
     #[test]
     fn always_with_deadline_stores_millis() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), Some(5_000));
+        let sm = StateMachineBuilder::new().compile_always(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(5_000),
+        );
         assert_eq!(sm.deadline_millis, Some(5_000));
     }
 
     #[test]
     fn always_without_deadline_is_none() {
-        let sm = StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_always(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.deadline_millis, None);
     }
 
@@ -628,84 +644,128 @@ mod tests {
 
     #[test]
     fn eventually_without_deadline_has_two_states() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states.len(), 2);
     }
 
     #[test]
     fn eventually_with_deadline_has_three_states() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(60_000));
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(60_000),
+        );
         assert_eq!(sm.states.len(), 3);
     }
 
     #[test]
     fn eventually_state_0_is_waiting() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states[0].label.as_str(), "waiting");
         assert_eq!(sm.states[0].kind, StateKind::Active);
     }
 
     #[test]
     fn eventually_state_1_is_satisfied() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.states[1].kind, StateKind::Satisfied);
     }
 
     #[test]
     fn eventually_with_deadline_state_2_is_violated() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(1_000));
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(1_000),
+        );
         assert_eq!(sm.states[2].kind, StateKind::Violated);
         assert_eq!(sm.states[2].label.as_str(), "violated_timeout");
     }
 
     #[test]
     fn eventually_accepting_state_is_1() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.accepting_states, vec![1]);
     }
 
     #[test]
     fn eventually_without_deadline_has_no_violating_states() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert!(sm.violating_states.is_empty());
     }
 
     #[test]
     fn eventually_with_deadline_violating_state_is_2() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(1_000));
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(1_000),
+        );
         assert_eq!(sm.violating_states, vec![2]);
     }
 
     #[test]
     fn eventually_with_deadline_has_timeout_transition() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(1_000));
-        let has_timeout = sm.transitions.iter().any(|t| matches!(t.guard, TransitionGuard::Timeout));
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(1_000),
+        );
+        let has_timeout = sm
+            .transitions
+            .iter()
+            .any(|t| matches!(t.guard, TransitionGuard::Timeout));
         assert!(has_timeout);
     }
 
     #[test]
     fn eventually_timeout_transition_goes_from_0_to_2() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(1_000));
-        let timeout_t = sm.transitions.iter().find(|t| matches!(t.guard, TransitionGuard::Timeout)).unwrap();
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(1_000),
+        );
+        let timeout_t = sm
+            .transitions
+            .iter()
+            .find(|t| matches!(t.guard, TransitionGuard::Timeout))
+            .unwrap();
         assert_eq!(timeout_t.from, 0);
         assert_eq!(timeout_t.to, 2);
     }
 
     #[test]
     fn eventually_kind_is_eventually() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.kind, TemporalKind::Eventually);
     }
 
     #[test]
     fn eventually_without_deadline_has_two_transitions() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
+        let sm =
+            StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), None);
         assert_eq!(sm.transitions.len(), 2);
     }
 
     #[test]
     fn eventually_with_deadline_has_three_transitions() {
-        let sm = StateMachineBuilder::new().compile_eventually(name("m"), name("inv"), lit_true(), Some(1_000));
+        let sm = StateMachineBuilder::new().compile_eventually(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            Some(1_000),
+        );
         assert_eq!(sm.transitions.len(), 3);
     }
 
@@ -729,7 +789,10 @@ mod tests {
         if let TransitionGuard::Predicate(IRExpr::Unary { op, .. }) = &self_loop.guard {
             assert_eq!(*op, UnaryOp::Not);
         } else {
-            panic!("expected Predicate(Unary {{ Not, .. }}), got {:?}", self_loop.guard);
+            panic!(
+                "expected Predicate(Unary {{ Not, .. }}), got {:?}",
+                self_loop.guard
+            );
         }
     }
 
@@ -743,40 +806,70 @@ mod tests {
 
     #[test]
     fn until_has_three_states() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.states.len(), 3);
     }
 
     #[test]
     fn until_state_0_is_holding() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.states[0].label.as_str(), "holding");
         assert_eq!(sm.states[0].kind, StateKind::Active);
     }
 
     #[test]
     fn until_state_1_is_released_satisfied() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.states[1].label.as_str(), "released");
         assert_eq!(sm.states[1].kind, StateKind::Satisfied);
     }
 
     #[test]
     fn until_state_2_is_violated() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.states[2].label.as_str(), "violated");
         assert_eq!(sm.states[2].kind, StateKind::Violated);
     }
 
     #[test]
     fn until_has_three_transitions() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.transitions.len(), 3);
     }
 
     #[test]
     fn until_release_transition_goes_0_to_1() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         let t = &sm.transitions[0]; // release: ψ holds → satisfied
         assert_eq!(t.from, 0);
         assert_eq!(t.to, 1);
@@ -785,7 +878,12 @@ mod tests {
 
     #[test]
     fn until_hold_transition_is_self_loop_0_to_0() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         let t = &sm.transitions[1]; // hold still true → stay
         assert_eq!(t.from, 0);
         assert_eq!(t.to, 0);
@@ -794,7 +892,12 @@ mod tests {
 
     #[test]
     fn until_hold_failure_goes_0_to_2() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         let t = &sm.transitions[2]; // hold broke → violated
         assert_eq!(t.from, 0);
         assert_eq!(t.to, 2);
@@ -803,25 +906,45 @@ mod tests {
 
     #[test]
     fn until_accepting_state_is_1() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.accepting_states, vec![1]);
     }
 
     #[test]
     fn until_violating_state_is_2() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.violating_states, vec![2]);
     }
 
     #[test]
     fn until_kind_is_until() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.kind, TemporalKind::Until);
     }
 
     #[test]
     fn until_has_no_deadline() {
-        let sm = StateMachineBuilder::new().compile_until(name("m"), name("inv"), lit_true(), lit_false());
+        let sm = StateMachineBuilder::new().compile_until(
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
+        );
         assert_eq!(sm.deadline_millis, None);
     }
 

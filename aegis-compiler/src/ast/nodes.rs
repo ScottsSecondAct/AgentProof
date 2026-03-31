@@ -363,18 +363,14 @@ pub enum TemporalExpr {
         within: Option<Box<Spanned<Expr>>>,
     },
     /// `never(φ)` — φ must not hold in any reachable state (□¬φ)
-    Never {
-        condition: Box<Spanned<Expr>>,
-    },
+    Never { condition: Box<Spanned<Expr>> },
     /// `φ until ψ` — φ must hold until ψ becomes true (φ U ψ)
     Until {
         hold: Box<Spanned<Expr>>,
         release: Box<Spanned<Expr>>,
     },
     /// `next(φ)` — φ must hold in the next state (Xφ)
-    Next {
-        condition: Box<Spanned<Expr>>,
-    },
+    Next { condition: Box<Spanned<Expr>> },
     /// `before(φ, ψ)` — φ must become true before ψ
     Before {
         first: Box<Spanned<Expr>>,
@@ -651,7 +647,10 @@ pub enum Pattern {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternField {
-    Named { key: Ident, pattern: Spanned<Pattern> },
+    Named {
+        key: Ident,
+        pattern: Spanned<Pattern>,
+    },
     Shorthand(Ident),
     Wildcard(Span),
 }

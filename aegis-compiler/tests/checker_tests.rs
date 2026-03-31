@@ -31,7 +31,9 @@ fn int_expr() -> Spanned<Expr> {
 }
 
 fn str_expr() -> Spanned<Expr> {
-    Spanned::dummy(Expr::Literal(Literal::String(smol_str::SmolStr::new("msg"))))
+    Spanned::dummy(Expr::Literal(Literal::String(smol_str::SmolStr::new(
+        "msg",
+    ))))
 }
 
 fn dur_expr() -> Spanned<Expr> {
@@ -114,7 +116,10 @@ fn call_expr(name: &str, args: Vec<Spanned<Expr>>) -> Spanned<Expr> {
         callee: Box::new(Spanned::dummy(Expr::Identifier(simple_name(name)))),
         args: args
             .into_iter()
-            .map(|v| Argument { name: None, value: v })
+            .map(|v| Argument {
+                name: None,
+                value: v,
+            })
             .collect(),
     })
 }
@@ -178,9 +183,9 @@ fn severity_clause(s: SeverityLevel) -> Spanned<PolicyMember> {
 fn rule_member(event: &str, clauses: Vec<Spanned<RuleClause>>) -> Spanned<PolicyMember> {
     Spanned::dummy(PolicyMember::Rule(RuleDecl {
         annotations: vec![],
-        on_events: vec![ScopeTarget::Literal(Spanned::dummy(smol_str::SmolStr::new(
-            event,
-        )))],
+        on_events: vec![ScopeTarget::Literal(Spanned::dummy(
+            smol_str::SmolStr::new(event),
+        ))],
         clauses,
     }))
 }
@@ -297,7 +302,11 @@ fn assert_has_code(diags: &DiagnosticSink, code: DiagnosticCode) {
     assert!(
         diags.diagnostics().iter().any(|d| d.code == code),
         "expected diagnostic {code:?} but got: {:?}",
-        diags.diagnostics().iter().map(|d| d.code).collect::<Vec<_>>()
+        diags
+            .diagnostics()
+            .iter()
+            .map(|d| d.code)
+            .collect::<Vec<_>>()
     );
 }
 
@@ -308,7 +317,11 @@ fn assert_error_count(diags: &DiagnosticSink, n: usize) {
         n,
         "expected {n} errors but got {}: {:?}",
         diags.error_count(),
-        diags.diagnostics().iter().map(|d| &d.message).collect::<Vec<_>>()
+        diags
+            .diagnostics()
+            .iter()
+            .map(|d| &d.message)
+            .collect::<Vec<_>>()
     );
 }
 
@@ -524,7 +537,10 @@ fn quantifier_predicate_returning_int_emits_e0101() {
     let q = quantifier_expr(QuantifierKind::All, items, "x", int_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(q), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(q), deny_verdict()],
+        )],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0101);
 }
@@ -567,7 +583,10 @@ fn quantifier_on_int_expr_emits_e0103() {
     let q = quantifier_expr(QuantifierKind::All, int_expr(), "x", bool_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(q), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(q), deny_verdict()],
+        )],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0103);
 }
@@ -600,12 +619,7 @@ fn call_with_too_few_args_emits_e0105() {
 #[test]
 fn call_with_too_many_args_emits_e0105() {
     let prog = program(vec![
-        fn_decl(
-            "is_safe",
-            vec![],
-            prim(PrimitiveType::Bool),
-            bool_expr(),
-        ),
+        fn_decl("is_safe", vec![], prim(PrimitiveType::Bool), bool_expr()),
         simple_policy(
             "Guard",
             vec![rule_member(
@@ -852,8 +866,10 @@ fn rule_with_no_verdict_emits_warning_e0300() {
     )]);
     let diags = check(&prog);
     assert!(
-        diags.diagnostics().iter().any(|d| d.code == DiagnosticCode::E0300
-            && d.severity == Severity::Warning),
+        diags
+            .diagnostics()
+            .iter()
+            .any(|d| d.code == DiagnosticCode::E0300 && d.severity == Severity::Warning),
         "expected W/E0300 warning"
     );
 }
@@ -872,8 +888,10 @@ fn multiple_severity_clauses_emits_warning_e0301() {
     )]);
     let diags = check(&prog);
     assert!(
-        diags.diagnostics().iter().any(|d| d.code == DiagnosticCode::E0301
-            && d.severity == Severity::Warning),
+        diags
+            .diagnostics()
+            .iter()
+            .any(|d| d.code == DiagnosticCode::E0301 && d.severity == Severity::Warning),
         "expected W/E0301 warning"
     );
 }
@@ -926,11 +944,7 @@ fn quota_constraint_with_correct_types_no_errors() {
 
 #[test]
 fn extends_unknown_policy_emits_e0304() {
-    let prog = program(vec![policy_extends(
-        "Derived",
-        "NonExistentBase",
-        vec![],
-    )]);
+    let prog = program(vec![policy_extends("Derived", "NonExistentBase", vec![])]);
     assert_has_code(&check(&prog), DiagnosticCode::E0304);
 }
 
@@ -962,7 +976,10 @@ fn int_plus_int_no_errors() {
         "Guard",
         vec![rule_member(
             "tool_call",
-            vec![when_clause(binary_expr(BinaryOp::Eq, expr, int_expr())), deny_verdict()],
+            vec![
+                when_clause(binary_expr(BinaryOp::Eq, expr, int_expr())),
+                deny_verdict(),
+            ],
         )],
     )]);
     assert_no_errors(&check(&prog));
