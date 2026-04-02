@@ -47,6 +47,28 @@ fn var_expr(name: &str) -> Spanned<Expr> {
     Spanned::dummy(Expr::Identifier(simple_name(name)))
 }
 
+/// Build a multi-segment `event.field` identifier, mirroring what the parser
+/// produces when `qualified_name` greedily consumes dot-separated segments.
+fn event_field_expr(field: &str) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Identifier(QualifiedName {
+        segments: vec![ident("event"), ident(field)],
+        span: Span::DUMMY,
+    }))
+}
+
+/// Build a three-segment `event.outer.inner` chain (e.g. `event.endpoint.url`).
+fn event_nested_field_expr(outer: &str, inner: &str) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Identifier(QualifiedName {
+        segments: vec![ident("event"), ident(outer), ident(inner)],
+        span: Span::DUMMY,
+    }))
+}
+
+/// Build a `context.field` expression using the dedicated `Expr::Context` node.
+fn context_field_expr(field: &str) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Context(QualifiedName::simple(ident(field))))
+}
+
 fn binary_expr(op: BinaryOp, left: Spanned<Expr>, right: Spanned<Expr>) -> Spanned<Expr> {
     Spanned::dummy(Expr::Binary {
         op: Spanned::dummy(op),
@@ -95,13 +117,6 @@ fn quantifier_expr(
 
 fn list_expr(elements: Vec<Spanned<Expr>>) -> Spanned<Expr> {
     Spanned::dummy(Expr::List(elements))
-}
-
-fn field_access(object: Spanned<Expr>, field: &str) -> Spanned<Expr> {
-    Spanned::dummy(Expr::FieldAccess {
-        object: Box::new(object),
-        field: ident(field),
-    })
 }
 
 fn index_access(object: Spanned<Expr>, index: Spanned<Expr>) -> Spanned<Expr> {
@@ -162,13 +177,6 @@ fn deny_verdict_with_message(msg: Spanned<Expr>) -> Spanned<RuleClause> {
     Spanned::dummy(RuleClause::Verdict(VerdictClause {
         verdict: Spanned::dummy(Verdict::Deny),
         message: Some(msg),
-    }))
-}
-
-fn allow_verdict() -> Spanned<RuleClause> {
-    Spanned::dummy(RuleClause::Verdict(VerdictClause {
-        verdict: Spanned::dummy(Verdict::Allow),
-        message: None,
     }))
 }
 
@@ -310,20 +318,6 @@ fn assert_has_code(diags: &DiagnosticSink, code: DiagnosticCode) {
     );
 }
 
-/// Assert an exact error count.
-fn assert_error_count(diags: &DiagnosticSink, n: usize) {
-    assert_eq!(
-        diags.error_count(),
-        n,
-        "expected {n} errors but got {}: {:?}",
-        diags.error_count(),
-        diags
-            .diagnostics()
-            .iter()
-            .map(|d| &d.message)
-            .collect::<Vec<_>>()
-    );
-}
 
 // ── Valid programs ────────────────────────────────────────────────────────────
 
@@ -1013,6 +1007,753 @@ fn duration_comparison_no_errors() {
     assert_no_errors(&check(&prog));
 }
 
+// ── Event and context bindings ────────────────────────────────────────────────
+//
+// These tests cover the gap where `event.field` in a when clause previously
+// produced E0001 because the pest grammar's `qualified_name` rule greedily
+// matches dot-separated identifiers, creating multi-segment Identifier nodes
+// instead of FieldAccess nodes.  The checker must resolve the base segment
+// and walk remaining segments as virtual field accesses.
+
+#[test]
+fn event_field_equality_in_when_clause_no_errors() {
+    // when event.tool_name == "http_get" — most common real-world pattern
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("tool_name"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_field_neq_in_when_clause_no_errors() {
+    // when event.tool_name != "allow" — tool_name is in the tool_call schema
+    let cond = binary_expr(BinaryOp::Neq, event_field_expr("tool_name"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_field_in_collection_in_when_clause_no_errors() {
+    // when event.resource_type in ["pii", "financial"] — data_access schema
+    let list = list_expr(vec![str_expr(), str_expr()]);
+    let cond = binary_expr(BinaryOp::In, event_field_expr("resource_type"), list);
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "data_access",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_nested_field_equality_in_when_clause_no_errors() {
+    // when event.endpoint.url == "https://..."  (three-segment identifier)
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        event_nested_field_expr("endpoint", "url"),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "external_request",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_field_starts_with_predicate_no_errors() {
+    // when event.endpoint.url starts_with "https://"
+    let subject = event_nested_field_expr("endpoint", "url");
+    let cond = predicate_expr(PredicateKind::StartsWith, subject, str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "external_request",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_field_matches_predicate_no_errors() {
+    // when event.url matches /^https:/ — url is in the external_request schema
+    let subject = event_field_expr("url");
+    let regex = Spanned::dummy(Expr::Literal(Literal::Regex(smol_str::SmolStr::new(
+        "^https:",
+    ))));
+    let cond = predicate_expr(PredicateKind::Matches, subject, regex);
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "external_request",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn event_field_contains_predicate_no_errors() {
+    // when event.tool_name contains "secret" — tool_name is in the tool_call schema
+    let subject = event_field_expr("tool_name");
+    let cond = predicate_expr(PredicateKind::Contains, subject, str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn context_field_access_in_when_clause_no_errors() {
+    // `context` is a keyword; `context.field` produces `Expr::Context`.
+    // This should be accepted inside a rule without errors.
+    let cond = binary_expr(BinaryOp::Eq, context_field_expr("allowed_tools"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn unknown_multi_segment_still_emits_e0001() {
+    // `unknown_var.field` — base is not in scope → E0001
+    let name = QualifiedName {
+        segments: vec![ident("unknown_var"), ident("field")],
+        span: Span::DUMMY,
+    };
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        Spanned::dummy(Expr::Identifier(name)),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0001);
+}
+
+// ── Additional AST builder helpers (used by the coverage gap tests below) ─────
+
+fn method_call_expr(object: Spanned<Expr>, method: &str, args: Vec<Spanned<Expr>>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::MethodCall {
+        object: Box::new(object),
+        method: ident(method),
+        args: args
+            .into_iter()
+            .map(|v| Argument {
+                name: None,
+                value: v,
+            })
+            .collect(),
+    })
+}
+
+fn count_expr_no_filter(collection: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Count {
+        collection: Box::new(collection),
+        filter: None,
+    })
+}
+
+fn count_expr_with_filter(
+    collection: Spanned<Expr>,
+    param: &str,
+    body: Spanned<Expr>,
+) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Count {
+        collection: Box::new(collection),
+        filter: Some(Box::new(Lambda {
+            params: vec![LambdaParam {
+                name: ident(param),
+                ty: None,
+            }],
+            body: Box::new(body),
+        })),
+    })
+}
+
+fn lambda_expr(param: &str, body: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Lambda(Lambda {
+        params: vec![LambdaParam {
+            name: ident(param),
+            ty: None,
+        }],
+        body: Box::new(body),
+    }))
+}
+
+fn lambda_typed_expr(param: &str, ty: Type, body: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Lambda(Lambda {
+        params: vec![LambdaParam {
+            name: ident(param),
+            ty: Some(Spanned::dummy(ty)),
+        }],
+        body: Box::new(body),
+    }))
+}
+
+fn object_expr() -> Spanned<Expr> {
+    Spanned::dummy(Expr::Object(vec![ObjectField {
+        key: ident("x"),
+        value: int_expr(),
+    }]))
+}
+
+fn block_expr(stmts: Vec<Spanned<BlockStatement>>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Block(stmts))
+}
+
+fn block_expr_stmt(e: Spanned<Expr>) -> Spanned<BlockStatement> {
+    Spanned::dummy(BlockStatement::Expr(e.node))
+}
+
+fn block_binding_stmt(name: &str, value: Spanned<Expr>) -> Spanned<BlockStatement> {
+    Spanned::dummy(BlockStatement::Binding(BindingDecl {
+        name: ident(name),
+        ty: None,
+        value,
+    }))
+}
+
+fn block_verdict_stmt() -> Spanned<BlockStatement> {
+    Spanned::dummy(BlockStatement::Verdict(VerdictClause {
+        verdict: Spanned::dummy(Verdict::Deny),
+        message: None,
+    }))
+}
+
+fn block_action_stmt() -> Spanned<BlockStatement> {
+    Spanned::dummy(BlockStatement::Action(ActionClause {
+        verb: Spanned::dummy(ActionVerb::Log),
+        args: ActionArgs::None,
+    }))
+}
+
+fn match_arm_expr(pat: Pattern, result_expr: Spanned<Expr>) -> MatchArm {
+    MatchArm {
+        pattern: Spanned::dummy(pat),
+        result: Spanned::dummy(MatchResult::Expr(result_expr.node)),
+        span: Span::DUMMY,
+    }
+}
+
+fn match_arm_verdict(pat: Pattern) -> MatchArm {
+    MatchArm {
+        pattern: Spanned::dummy(pat),
+        result: Spanned::dummy(MatchResult::Verdict(VerdictClause {
+            verdict: Spanned::dummy(Verdict::Allow),
+            message: None,
+        })),
+        span: Span::DUMMY,
+    }
+}
+
+fn match_arm_block(pat: Pattern, stmts: Vec<Spanned<BlockStatement>>) -> MatchArm {
+    MatchArm {
+        pattern: Spanned::dummy(pat),
+        result: Spanned::dummy(MatchResult::Block(stmts)),
+        span: Span::DUMMY,
+    }
+}
+
+fn match_expr_node(scrutinee: Spanned<Expr>, arms: Vec<MatchArm>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(scrutinee),
+        arms,
+    })
+}
+
+fn binding_member(name: &str, value: Spanned<Expr>) -> Spanned<PolicyMember> {
+    Spanned::dummy(PolicyMember::Binding(BindingDecl {
+        name: ident(name),
+        ty: None,
+        value,
+    }))
+}
+
+fn binding_member_typed(name: &str, ty: Type, value: Spanned<Expr>) -> Spanned<PolicyMember> {
+    Spanned::dummy(PolicyMember::Binding(BindingDecl {
+        name: ident(name),
+        ty: Some(Spanned::dummy(ty)),
+        value,
+    }))
+}
+
+fn fn_policy_member(
+    name: &str,
+    params: Vec<(&str, Type)>,
+    ret: Type,
+    body: Spanned<Expr>,
+) -> Spanned<PolicyMember> {
+    Spanned::dummy(PolicyMember::Function(FunctionDecl {
+        name: ident(name),
+        params: params
+            .into_iter()
+            .map(|(n, t)| TypedParam {
+                name: ident(n),
+                ty: Spanned::dummy(t),
+            })
+            .collect(),
+        return_type: Spanned::dummy(ret),
+        body,
+    }))
+}
+
+fn import_module(path: &str) -> Spanned<Declaration> {
+    Spanned::dummy(Declaration::Import(ImportDecl {
+        path: simple_name(path),
+        kind: ImportKind::Module { alias: None },
+    }))
+}
+
+fn import_names(path: &str, names: Vec<&str>) -> Spanned<Declaration> {
+    Spanned::dummy(Declaration::Import(ImportDecl {
+        path: simple_name(path),
+        kind: ImportKind::Names(
+            names
+                .into_iter()
+                .map(|n| ImportTarget {
+                    name: ident(n),
+                    alias: None,
+                })
+                .collect(),
+        ),
+    }))
+}
+
+// ── MethodCall ────────────────────────────────────────────────────────────────
+
+#[test]
+fn method_call_on_object_no_errors() {
+    // object.len() — method resolution is deferred; checker accepts it
+    let expr = method_call_expr(str_expr(), "len", vec![]);
+    let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn method_call_args_are_type_checked() {
+    // even though the method itself isn't resolved, its arguments are still
+    // checked — a bad arg type should propagate (but not error here because
+    // the method result is Dynamic which suppresses cascading)
+    let expr = method_call_expr(str_expr(), "replace", vec![str_expr(), int_expr()]);
+    let cond = binary_expr(BinaryOp::Eq, expr, str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Count ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn count_without_filter_returns_int_no_errors() {
+    let lst = list_expr(vec![int_expr(), int_expr()]);
+    let expr = count_expr_no_filter(lst);
+    // count(...) == 2  — both sides int
+    let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn count_with_bool_filter_no_errors() {
+    let lst = list_expr(vec![int_expr(), int_expr()]);
+    let expr = count_expr_with_filter(lst, "x", bool_expr());
+    let cond = binary_expr(BinaryOp::Gt, expr, int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn count_filter_returning_int_emits_e0101() {
+    let lst = list_expr(vec![int_expr()]);
+    // filter body is int, not bool → E0101
+    let expr = count_expr_with_filter(lst, "x", int_expr());
+    let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0101);
+}
+
+// ── Match ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn match_with_expr_arms_no_errors() {
+    // match scrutinee with bool arms — result type is bool
+    let arms = vec![
+        match_arm_expr(Pattern::Wildcard, bool_expr()),
+        match_arm_expr(Pattern::Literal(Literal::Bool(false)), bool_expr()),
+    ];
+    let expr = match_expr_node(int_expr(), arms);
+    // use the match result as a when condition
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(expr), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn match_with_verdict_arm_no_errors() {
+    // A match whose arms return Verdict — checker must visit the MatchResult::Verdict path.
+    let arms = vec![match_arm_verdict(Pattern::Wildcard)];
+    let expr = match_expr_node(str_expr(), arms);
+    // Put the match inside a top-level binding so the checker visits it.
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("v"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn match_with_block_arm_no_errors() {
+    // arm result is a block — checker must descend into it
+    let stmts = vec![block_expr_stmt(bool_expr())];
+    let arms = vec![match_arm_block(Pattern::Wildcard, stmts)];
+    let expr = match_expr_node(int_expr(), arms);
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(bool_expr()), deny_verdict()])],
+    )]);
+    // Compile a program that contains the match expr inside a binding so the
+    // checker visits it without requiring it to be bool.
+    let prog2 = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("m"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog2));
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn match_empty_arms_no_errors() {
+    // Empty arm list — checker returns Never, which is fine
+    let expr = match_expr_node(int_expr(), vec![]);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("m"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Lambda ────────────────────────────────────────────────────────────────────
+
+#[test]
+fn standalone_lambda_with_untyped_param_no_errors() {
+    // A free lambda (not inside a quantifier) — param gets a fresh type var
+    let expr = lambda_expr("x", bool_expr());
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("f"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn standalone_lambda_with_typed_param_no_errors() {
+    // Lambda with explicit int param
+    let expr = lambda_typed_expr("n", prim(PrimitiveType::Int), bool_expr());
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("f"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn lambda_param_visible_in_body_no_errors() {
+    // Body references the parameter — must resolve without E0001
+    let expr = lambda_typed_expr("n", prim(PrimitiveType::Int), var_expr("n"));
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("f"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Block ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn block_with_expr_statement_no_errors() {
+    let stmts = vec![block_expr_stmt(bool_expr())];
+    let expr = block_expr(stmts);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("b"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn block_with_binding_statement_no_errors() {
+    // let x = 42 inside a block — binding stmt returns Never
+    let stmts = vec![
+        block_binding_stmt("x", int_expr()),
+        block_expr_stmt(bool_expr()),
+    ];
+    let expr = block_expr(stmts);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("b"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn block_with_verdict_statement_returns_verdict_no_errors() {
+    let stmts = vec![block_verdict_stmt()];
+    let expr = block_expr(stmts);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("b"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn block_with_action_statement_no_errors() {
+    let stmts = vec![block_action_stmt()];
+    let expr = block_expr(stmts);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("b"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn empty_block_no_errors() {
+    let expr = block_expr(vec![]);
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("b"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Object ────────────────────────────────────────────────────────────────────
+
+#[test]
+fn object_literal_no_errors() {
+    // { x: 42 } — produces anonymous open struct, no errors
+    let expr = object_expr();
+    let prog = program(vec![Spanned::dummy(Declaration::Binding(BindingDecl {
+        name: ident("obj"),
+        ty: None,
+        value: expr,
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn object_literal_in_rule_no_errors() {
+    // Object in a verdict message expression context (via binding)
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            binding_member("cfg", object_expr()),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Policy-level Binding ──────────────────────────────────────────────────────
+
+#[test]
+fn policy_level_binding_no_errors() {
+    // `let x = 42` inside a policy body
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            binding_member("threshold", int_expr()),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn policy_level_binding_with_matching_type_annotation_no_errors() {
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            binding_member_typed("limit", prim(PrimitiveType::Int), int_expr()),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn policy_level_binding_type_mismatch_emits_e0100() {
+    // declared as bool but value is int
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            binding_member_typed("flag", prim(PrimitiveType::Bool), int_expr()),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0100);
+}
+
+#[test]
+fn policy_level_binding_is_visible_in_rule_no_errors() {
+    // A binding defined at policy level should be in scope for rules
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            binding_member("threshold", int_expr()),
+            rule_member(
+                "tool_call",
+                vec![
+                    when_clause(binary_expr(
+                        BinaryOp::Eq,
+                        var_expr("threshold"),
+                        int_expr(),
+                    )),
+                    deny_verdict(),
+                ],
+            ),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Policy-level Function ─────────────────────────────────────────────────────
+
+#[test]
+fn policy_level_function_no_errors() {
+    // `def is_safe(x: int) -> bool = true` inside a policy body
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            fn_policy_member(
+                "is_safe",
+                vec![("x", prim(PrimitiveType::Int))],
+                prim(PrimitiveType::Bool),
+                bool_expr(),
+            ),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn policy_level_function_return_mismatch_emits_e0100() {
+    // declared to return bool but body is int
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            fn_policy_member(
+                "bad_fn",
+                vec![],
+                prim(PrimitiveType::Bool),
+                int_expr(),
+            ),
+            rule_member("tool_call", vec![deny_verdict()]),
+        ],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0100);
+}
+
+#[test]
+fn policy_level_function_callable_from_rule_no_errors() {
+    // Function defined at policy level, called inside a when clause
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![
+            fn_policy_member(
+                "ok",
+                vec![],
+                prim(PrimitiveType::Bool),
+                bool_expr(),
+            ),
+            rule_member(
+                "tool_call",
+                vec![when_clause(call_expr("ok", vec![])), deny_verdict()],
+            ),
+        ],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Import declarations ───────────────────────────────────────────────────────
+
+#[test]
+fn module_import_no_errors() {
+    // Import resolution is a future pass; the checker accepts imports structurally
+    let prog = program(vec![
+        import_module("agentproof.stdlib.pii"),
+        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+    ]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn named_import_no_errors() {
+    let prog = program(vec![
+        import_names("agentproof.stdlib", vec!["network", "compliance"]),
+        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+    ]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn import_with_policy_coexist_no_errors() {
+    // Imports and policies in the same file — no interference
+    let prog = program(vec![
+        import_module("agentproof.stdlib"),
+        type_decl("Endpoint", vec![("url", prim(PrimitiveType::String))]),
+        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+    ]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── equality_any_types_no_errors (kept last to preserve ordering) ─────────────
+
 #[test]
 fn equality_any_types_no_errors() {
     let expr = binary_expr(BinaryOp::Eq, int_expr(), str_expr());
@@ -1021,6 +1762,170 @@ fn equality_any_types_no_errors() {
         vec![rule_member(
             "tool_call",
             vec![when_clause(expr), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+// ── Event field type refinement ───────────────────────────────────────────────
+//
+// When a rule targets a single known event name (e.g. `on tool_call`), the
+// checker injects a typed `event` binding so that field access is validated
+// at compile time.  Unknown fields on a known-schema event emit E0108.
+// Rules on an unknown event name fall back to the open/dynamic `event` struct.
+
+#[test]
+fn known_event_known_field_no_errors() {
+    // event.tool_name in on tool_call — field exists in schema → no error
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("tool_name"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn known_event_unknown_field_emits_e0108() {
+    // event.nonexistent in on tool_call — not in schema → E0108
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("nonexistent"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0108);
+}
+
+#[test]
+fn unknown_event_unknown_field_no_errors() {
+    // event.anything in on custom_event — unknown event → dynamic fallback → no E0108
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("anything"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "custom_event",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn data_access_event_known_field_no_errors() {
+    // event.resource_type in on data_access — in schema → no error
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        event_field_expr("resource_type"),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "data_access",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn data_access_event_unknown_field_emits_e0108() {
+    // event.category in on data_access — not in schema → E0108
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("category"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "data_access",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0108);
+}
+
+#[test]
+fn external_request_nested_field_no_errors() {
+    // event.endpoint.url in on external_request — nested field in schema → no error
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        event_nested_field_expr("endpoint", "url"),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "external_request",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn external_request_unknown_nested_field_emits_e0108() {
+    // event.endpoint.nonexistent in on external_request — endpoint exists but
+    // field `nonexistent` does not → E0108
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        event_nested_field_expr("endpoint", "nonexistent"),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "external_request",
+            vec![when_clause(cond), deny_verdict()],
+        )],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0108);
+}
+
+#[test]
+fn multi_event_rule_uses_dynamic_event_fallback() {
+    // on tool_call, data_access { ... } — multiple events → dynamic fallback,
+    // any field access is allowed (no E0108 for unknown field)
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("arbitrary"), str_expr());
+    let rule = PolicyMember::Rule(RuleDecl {
+        annotations: vec![],
+        on_events: vec![
+            ScopeTarget::Literal(Spanned::dummy(smol_str::SmolStr::new("tool_call"))),
+            ScopeTarget::Literal(Spanned::dummy(smol_str::SmolStr::new("data_access"))),
+        ],
+        clauses: vec![when_clause(cond), deny_verdict()],
+    });
+    let prog = program(vec![Spanned::dummy(Declaration::Policy(PolicyDecl {
+        annotations: vec![],
+        name: ident("Guard"),
+        extends: None,
+        members: vec![Spanned::dummy(rule)],
+    }))]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn known_event_field_used_in_predicate_no_errors() {
+    // event.tool_name starts_with "http" in on tool_call — string field, string
+    // predicate → no error
+    let cond = predicate_expr(
+        PredicateKind::StartsWith,
+        event_field_expr("tool_name"),
+        str_expr(),
+    );
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn message_event_known_field_no_errors() {
+    // event.role in on message — in schema → no error
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("role"), str_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "message",
+            vec![when_clause(cond), deny_verdict()],
         )],
     )]);
     assert_no_errors(&check(&prog));

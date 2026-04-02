@@ -715,3 +715,916 @@ fn non_temporal_invariant_condition_produces_no_state_machine() {
     let (policies, _) = lower::compile(&prog);
     assert!(policies[0].state_machines.is_empty());
 }
+
+// ── Policy inheritance (`extends`) ────────────────────────────────────────────
+//
+// Current behavior: the lowering pass ignores `extends` — each policy compiles
+// independently from its own members. These tests verify that presence of an
+// `extends` clause does not panic or produce spurious errors, and document the
+// boundary at which member-merging should eventually be tested once inheritance
+// lowering is implemented.
+
+fn policy_extends(
+    name: &str,
+    base: &str,
+    members: Vec<Spanned<PolicyMember>>,
+) -> Spanned<Declaration> {
+    Spanned::dummy(Declaration::Policy(PolicyDecl {
+        annotations: vec![],
+        name: ident(name),
+        extends: Some(QualifiedName::simple(ident(base))),
+        members,
+    }))
+}
+
+#[test]
+fn derived_policy_extends_base_compiles_without_errors() {
+    let prog = program(vec![
+        simple_policy("Base", vec![severity_member(SeverityLevel::High)]),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (_, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+}
+
+#[test]
+fn derived_policy_with_extends_produces_a_compiled_policy() {
+    let prog = program(vec![
+        simple_policy("Base", vec![]),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies.len(), 2);
+    assert!(policies.iter().any(|p| p.name.as_str() == "Derived"));
+}
+
+#[test]
+fn derived_policy_own_rules_are_present() {
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![rule_member("base_event", vec![deny_verdict()])],
+        ),
+        policy_extends(
+            "Derived",
+            "Base",
+            vec![rule_member("derived_event", vec![allow_verdict()])],
+        ),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
+    // The derived policy's own rule must be present.
+    assert!(
+        derived
+            .rules
+            .iter()
+            .any(|r| r.on_events.iter().any(|e| e.as_str() == "derived_event")),
+        "derived policy's own rules should be compiled"
+    );
+}
+
+#[test]
+fn base_policy_is_compiled_independently() {
+    // Even when another policy extends it, the base compiles to its own output.
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![rule_member("base_event", vec![deny_verdict()])],
+        ),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let base = policies.iter().find(|p| p.name.as_str() == "Base").unwrap();
+    assert_eq!(base.rules.len(), 1);
+}
+
+#[test]
+fn multilevel_chain_all_compile_without_errors() {
+    // C extends B, B extends A — three levels deep.
+    let prog = program(vec![
+        simple_policy("A", vec![severity_member(SeverityLevel::Low)]),
+        policy_extends("B", "A", vec![severity_member(SeverityLevel::Medium)]),
+        policy_extends("C", "B", vec![severity_member(SeverityLevel::High)]),
+    ]);
+    let (policies, diags) = lower::compile(&prog);
+    assert!(
+        !diags.has_errors(),
+        "multilevel chain should compile cleanly"
+    );
+    assert_eq!(policies.len(), 3);
+}
+
+#[test]
+fn multilevel_chain_each_has_correct_name() {
+    let prog = program(vec![
+        simple_policy("Root", vec![]),
+        policy_extends("Middle", "Root", vec![]),
+        policy_extends("Leaf", "Middle", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let names: Vec<&str> = policies.iter().map(|p| p.name.as_str()).collect();
+    assert!(names.contains(&"Root"));
+    assert!(names.contains(&"Middle"));
+    assert!(names.contains(&"Leaf"));
+}
+
+#[test]
+fn multilevel_chain_leaf_has_own_rule() {
+    let prog = program(vec![
+        simple_policy(
+            "Root",
+            vec![rule_member("root_event", vec![deny_verdict()])],
+        ),
+        policy_extends(
+            "Mid",
+            "Root",
+            vec![rule_member("mid_event", vec![deny_verdict()])],
+        ),
+        policy_extends(
+            "Leaf",
+            "Mid",
+            vec![rule_member("leaf_event", vec![allow_verdict()])],
+        ),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let leaf = policies.iter().find(|p| p.name.as_str() == "Leaf").unwrap();
+    assert!(
+        leaf.rules
+            .iter()
+            .any(|r| r.on_events.iter().any(|e| e.as_str() == "leaf_event")),
+        "leaf policy should contain its own rule"
+    );
+}
+
+// ── Diamond topology (closest expressible with single inheritance) ────────────
+//
+// Aegis supports single inheritance only: `extends` takes at most one base.
+// The closest topology to a diamond is two sibling policies that share a
+// common ancestor: D ← B ← A and D ← C.  "Resolving the diamond" means
+// verifying that D's members appear exactly once in each derived policy's
+// compiled output — no cross-chain duplication.
+//
+// Note on cross-policy output: the compiler intentionally inlines each
+// policy's full ancestry into its own compiled output so that individual
+// `.aegisc` files can be loaded without their base policies present.  When
+// multiple policies extend the same base, the base's compiled members appear
+// in each policy's bytecode independently.  This is by design (self-contained
+// output), not a correctness defect.
+
+#[test]
+fn diamond_shape_compiles_without_errors() {
+    // Two subtrees sharing D: D←B←A, D←C.
+    let prog = program(vec![
+        simple_policy("D", vec![severity_member(SeverityLevel::Low)]),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+        policy_extends("A", "B", vec![]),
+    ]);
+    let (policies, diags) = lower::compile(&prog);
+    assert!(
+        !diags.has_errors(),
+        "diamond-shaped hierarchy should compile cleanly"
+    );
+    assert_eq!(policies.len(), 4);
+}
+
+#[test]
+fn diamond_shape_all_names_present() {
+    let prog = program(vec![
+        simple_policy("D", vec![]),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+        policy_extends("A", "B", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let names: std::collections::HashSet<&str> = policies.iter().map(|p| p.name.as_str()).collect();
+    assert!(names.contains("A"));
+    assert!(names.contains("B"));
+    assert!(names.contains("C"));
+    assert!(names.contains("D"));
+}
+
+#[test]
+fn diamond_base_rule_appears_once_in_each_sibling() {
+    // D has one rule.  B and C each extend D.
+    // Each compiled sibling should contain D's rule exactly once.
+    let prog = program(vec![
+        simple_policy("D", vec![rule_member("d_ev", vec![deny_verdict()])]),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
+    let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
+    assert_eq!(b.rules.len(), 1, "B should have D's rule exactly once");
+    assert_eq!(c.rules.len(), 1, "C should have D's rule exactly once");
+}
+
+#[test]
+fn diamond_base_rule_appears_once_in_deep_child() {
+    // D←B←A: A inherits through B, which inherits from D.
+    // D's rule must appear exactly once in A — not duplicated.
+    let prog = program(vec![
+        simple_policy("D", vec![rule_member("d_ev", vec![deny_verdict()])]),
+        policy_extends("B", "D", vec![rule_member("b_ev", vec![deny_verdict()])]),
+        policy_extends("C", "D", vec![]),
+        policy_extends("A", "B", vec![rule_member("a_ev", vec![allow_verdict()])]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let a = policies.iter().find(|p| p.name.as_str() == "A").unwrap();
+    // A inherits d_ev (via B←D) and b_ev (from B), plus its own a_ev.
+    assert_eq!(a.rules.len(), 3, "A should have d + b + own rule, each once");
+    // Count occurrences of d_ev specifically.
+    let d_ev_count = a
+        .rules
+        .iter()
+        .filter(|r| r.on_events.iter().any(|e| e.as_str() == "d_ev"))
+        .count();
+    assert_eq!(d_ev_count, 1, "d_ev must appear exactly once in A");
+}
+
+#[test]
+fn diamond_base_state_machine_appears_once_in_each_sibling() {
+    // D has one temporal invariant → one state machine.
+    // B and C (both extending D) each inherit exactly one state machine.
+    let prog = program(vec![
+        simple_policy(
+            "D",
+            vec![proof_member("P", "I", temporal_always(bool_expr()))],
+        ),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
+    let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
+    assert_eq!(b.state_machines.len(), 1, "B should inherit D's SM exactly once");
+    assert_eq!(c.state_machines.len(), 1, "C should inherit D's SM exactly once");
+}
+
+#[test]
+fn diamond_base_constraint_appears_once_in_each_sibling() {
+    // D has one rate-limit constraint; B and C inherit it without duplication.
+    let prog = program(vec![
+        simple_policy(
+            "D",
+            vec![constraint_member(
+                ConstraintKind::RateLimit,
+                "calls",
+                10,
+                1,
+                DurationUnit::Minutes,
+            )],
+        ),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
+    let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
+    assert_eq!(b.constraints.len(), 1, "B should inherit D's constraint exactly once");
+    assert_eq!(c.constraints.len(), 1, "C should inherit D's constraint exactly once");
+}
+
+#[test]
+fn diamond_severity_inherited_by_both_siblings() {
+    // D sets severity Critical; B and C inherit it without override.
+    let prog = program(vec![
+        simple_policy("D", vec![severity_member(SeverityLevel::Critical)]),
+        policy_extends("B", "D", vec![]),
+        policy_extends("C", "D", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
+    let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
+    assert_eq!(b.severity, SeverityLevel::Critical);
+    assert_eq!(c.severity, SeverityLevel::Critical);
+}
+
+#[test]
+fn forward_reference_extends_compiles_without_errors() {
+    // Derived is declared before its base — forward reference.
+    let prog = program(vec![
+        policy_extends("Derived", "Base", vec![]),
+        simple_policy("Base", vec![]),
+    ]);
+    let (_, diags) = lower::compile(&prog);
+    assert!(
+        !diags.has_errors(),
+        "forward-reference extends should compile"
+    );
+}
+
+// ── Inheritance member merging ────────────────────────────────────────────────
+//
+// These tests verify that rules, state machines, constraints, and severity set
+// in a base policy are carried into derived policies by the lowering pass.
+
+#[test]
+fn derived_inherits_single_rule_from_base() {
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![rule_member("base_event", vec![deny_verdict()])],
+        ),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.rules.len(), 1, "derived should inherit the base rule");
+    assert!(derived.rules[0].on_events.iter().any(|e| e.as_str() == "base_event"));
+}
+
+#[test]
+fn derived_has_both_inherited_and_own_rules() {
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![rule_member("base_event", vec![deny_verdict()])],
+        ),
+        policy_extends(
+            "Derived",
+            "Base",
+            vec![rule_member("derived_event", vec![allow_verdict()])],
+        ),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.rules.len(), 2, "derived should have base + own rule");
+    assert!(derived.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "base_event")));
+    assert!(derived.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "derived_event")));
+}
+
+#[test]
+fn derived_inherits_base_severity() {
+    // Base is High; derived has no severity override → inherits High.
+    let prog = program(vec![
+        simple_policy("Base", vec![severity_member(SeverityLevel::High)]),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.severity, SeverityLevel::High);
+}
+
+#[test]
+fn derived_severity_overrides_base() {
+    // Base is Low; derived sets Critical → last-wins gives Critical.
+    let prog = program(vec![
+        simple_policy("Base", vec![severity_member(SeverityLevel::Low)]),
+        policy_extends("Derived", "Base", vec![severity_member(SeverityLevel::Critical)]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.severity, SeverityLevel::Critical);
+}
+
+#[test]
+fn derived_inherits_base_state_machine() {
+    // Base has a temporal invariant; derived should get the compiled state machine.
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![proof_member("P", "I", temporal_always(bool_expr()))],
+        ),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.state_machines.len(), 1, "derived should inherit base state machine");
+}
+
+#[test]
+fn derived_accumulates_state_machines_from_base_and_own() {
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![proof_member("P1", "I1", temporal_always(bool_expr()))],
+        ),
+        policy_extends(
+            "Derived",
+            "Base",
+            vec![proof_member("P2", "I2", temporal_never(bool_expr()))],
+        ),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.state_machines.len(), 2);
+}
+
+#[test]
+fn derived_inherits_base_constraint() {
+    let prog = program(vec![
+        simple_policy(
+            "Base",
+            vec![constraint_member(
+                ConstraintKind::RateLimit,
+                "calls",
+                10,
+                1,
+                DurationUnit::Minutes,
+            )],
+        ),
+        policy_extends("Derived", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    assert_eq!(derived.constraints.len(), 1, "derived should inherit the base constraint");
+}
+
+#[test]
+fn multilevel_leaf_inherits_all_ancestor_rules() {
+    // Root → Mid → Leaf; each level contributes one rule.
+    let prog = program(vec![
+        simple_policy("Root", vec![rule_member("root_ev", vec![deny_verdict()])]),
+        policy_extends("Mid", "Root", vec![rule_member("mid_ev", vec![deny_verdict()])]),
+        policy_extends("Leaf", "Mid", vec![rule_member("leaf_ev", vec![allow_verdict()])]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let leaf = policies.iter().find(|p| p.name.as_str() == "Leaf").unwrap();
+    assert_eq!(leaf.rules.len(), 3, "leaf should have root + mid + own rule");
+    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "root_ev")));
+    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "mid_ev")));
+    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "leaf_ev")));
+}
+
+#[test]
+fn inheritance_cycle_guard_does_not_panic() {
+    // Cycle: A extends B, B extends A. The lowering should not loop forever.
+    // B is not in the program (unknown base), so only A is compiled. The
+    // cycle guard is exercised when A is resolved and its base lookup finds
+    // a policy that has already been visited.
+    let prog = program(vec![
+        policy_extends("A", "B", vec![rule_member("ev_a", vec![deny_verdict()])]),
+        policy_extends("B", "A", vec![rule_member("ev_b", vec![deny_verdict()])]),
+    ]);
+    // Must complete without panicking.
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies.len(), 2);
+}
+
+#[test]
+fn base_rules_are_not_duplicated_when_multiple_policies_extend_it() {
+    // D extends Base; E extends Base. Base's rules must not multiply.
+    let prog = program(vec![
+        simple_policy("Base", vec![rule_member("shared", vec![deny_verdict()])]),
+        policy_extends("D", "Base", vec![]),
+        policy_extends("E", "Base", vec![]),
+    ]);
+    let (policies, _) = lower::compile(&prog);
+    let d = policies.iter().find(|p| p.name.as_str() == "D").unwrap();
+    let e = policies.iter().find(|p| p.name.as_str() == "E").unwrap();
+    assert_eq!(d.rules.len(), 1);
+    assert_eq!(e.rules.len(), 1);
+}
+
+// ── Additional temporal operators (Next / Before / After) ─────────────────────
+
+fn temporal_next(cond: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::Next {
+        condition: Box::new(cond),
+    }))
+}
+
+fn temporal_before(first: Spanned<Expr>, second: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::Before {
+        first: Box::new(first),
+        second: Box::new(second),
+    }))
+}
+
+fn temporal_after(condition: Spanned<Expr>, trigger: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::After {
+        condition: Box::new(condition),
+        trigger: Box::new(trigger),
+    }))
+}
+
+#[test]
+fn next_invariant_compiles_to_state_machine_with_kind_next() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "MustNext", temporal_next(bool_expr()))],
+    )]);
+    let (policies, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+    let policy = &policies[0];
+    assert_eq!(policy.state_machines.len(), 1);
+    assert_eq!(policy.state_machines[0].kind, TemporalKind::Next);
+}
+
+#[test]
+fn next_state_machine_has_four_states() {
+    // next(φ) → initial → checking → satisfied/violated (4 states)
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "NextCheck", temporal_next(bool_expr()))],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].states.len(), 4);
+}
+
+#[test]
+fn before_invariant_compiles_to_state_machine() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Order",
+            temporal_before(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+    assert_eq!(policies[0].state_machines.len(), 1);
+}
+
+#[test]
+fn before_state_machine_has_three_states() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "BeforeOrder",
+            temporal_before(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].states.len(), 3);
+}
+
+#[test]
+fn after_invariant_compiles_to_state_machine() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Sequence",
+            temporal_after(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+    assert_eq!(policies[0].state_machines.len(), 1);
+}
+
+// ── lower_expr variant coverage ───────────────────────────────────────────────
+
+// Helper: build a policy whose single rule has the given `when` expression.
+// Lowering the policy exercises lower_expr on that expression.
+fn policy_with_when_expr(expr: Spanned<Expr>) -> aegis_compiler::ast::Program {
+    program(vec![simple_policy(
+        "P",
+        vec![rule_member("ev", vec![when_clause(expr), deny_verdict()])],
+    )])
+}
+
+#[test]
+fn lower_expr_unary_not_does_not_panic() {
+    let expr = Spanned::dummy(Expr::Unary {
+        op: Spanned::dummy(UnaryOp::Not),
+        operand: Box::new(bool_expr()),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_context_ref_produces_ir() {
+    let name = QualifiedName {
+        segments: vec![ident("tool_calls")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Context(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_identifier_event_root_resolves() {
+    // Identifier starting with "event" → RefRoot::Event
+    let name = QualifiedName {
+        segments: vec![ident("event"), ident("tool")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Identifier(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_identifier_context_root_resolves() {
+    let name = QualifiedName {
+        segments: vec![ident("context"), ident("budget")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Identifier(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_identifier_policy_root_resolves() {
+    let name = QualifiedName {
+        segments: vec![ident("policy"), ident("version")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Identifier(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_identifier_unresolved_single_segment() {
+    // Unknown single-segment name → context ref for forward compat
+    let name = QualifiedName {
+        segments: vec![ident("unknown_var")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Identifier(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_identifier_multi_segment_unknown() {
+    // Multi-segment unknown → dotted context ref
+    let name = QualifiedName {
+        segments: vec![ident("module"), ident("sub"), ident("field")],
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Identifier(name));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_field_access_does_not_panic() {
+    let obj = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("data")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::FieldAccess {
+        object: Box::new(obj),
+        field: ident("value"),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_index_access_does_not_panic() {
+    let obj = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("items")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::IndexAccess {
+        object: Box::new(obj),
+        index: Box::new(int_lit_expr(0)),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_call_known_identifier_does_not_panic() {
+    let callee = Spanned::dummy(Expr::Identifier(QualifiedName {
+        segments: vec![ident("my_func")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::Call {
+        callee: Box::new(callee),
+        args: vec![],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_call_field_access_callee() {
+    // Call where callee is a FieldAccess → MethodCall in IR
+    let obj = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("obj")],
+        span: Span::DUMMY,
+    }));
+    let fa = Spanned::dummy(Expr::FieldAccess {
+        object: Box::new(obj),
+        field: ident("method"),
+    });
+    let expr = Spanned::dummy(Expr::Call {
+        callee: Box::new(fa),
+        args: vec![Argument {
+            name: None,
+            value: bool_expr(),
+        }],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_method_call_does_not_panic() {
+    let obj = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("items")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::MethodCall {
+        object: Box::new(obj),
+        method: ident("count"),
+        args: vec![],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_predicate_does_not_panic() {
+    let subject = Spanned::dummy(Expr::Identifier(QualifiedName {
+        segments: vec![ident("event"), ident("url")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::Predicate {
+        kind: PredicateKind::StartsWith,
+        subject: Box::new(subject),
+        argument: Box::new(Spanned::dummy(Expr::Literal(Literal::String(
+            "https".into(),
+        )))),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_quantifier_all_does_not_panic() {
+    let collection = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("tools")],
+        span: Span::DUMMY,
+    }));
+    let lambda = Lambda {
+        params: vec![LambdaParam {
+            name: ident("t"),
+            ty: None,
+        }],
+        body: Box::new(bool_expr()),
+    };
+    let expr = Spanned::dummy(Expr::Quantifier {
+        kind: QuantifierKind::All,
+        collection: Box::new(collection),
+        predicate: Box::new(lambda),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_count_with_filter_does_not_panic() {
+    let collection = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("calls")],
+        span: Span::DUMMY,
+    }));
+    let lambda = Lambda {
+        params: vec![LambdaParam {
+            name: ident("c"),
+            ty: None,
+        }],
+        body: Box::new(bool_expr()),
+    };
+    let expr = Spanned::dummy(Expr::Count {
+        collection: Box::new(collection),
+        filter: Some(Box::new(lambda)),
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_count_without_filter_does_not_panic() {
+    let collection = Spanned::dummy(Expr::Context(QualifiedName {
+        segments: vec![ident("calls")],
+        span: Span::DUMMY,
+    }));
+    let expr = Spanned::dummy(Expr::Count {
+        collection: Box::new(collection),
+        filter: None,
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_list_does_not_panic() {
+    let expr = Spanned::dummy(Expr::List(vec![bool_expr(), bool_expr(), int_lit_expr(1)]));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_object_does_not_panic() {
+    let expr = Spanned::dummy(Expr::Object(vec![ObjectField {
+        key: ident("key"),
+        value: bool_expr(),
+    }]));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_lambda_does_not_panic() {
+    let lambda = Lambda {
+        params: vec![LambdaParam {
+            name: ident("x"),
+            ty: None,
+        }],
+        body: Box::new(bool_expr()),
+    };
+    let expr = Spanned::dummy(Expr::Lambda(lambda));
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_match_wildcard_pattern_does_not_panic() {
+    let arm = MatchArm {
+        pattern: Spanned::dummy(Pattern::Wildcard),
+        result: Spanned::dummy(MatchResult::Expr(Expr::Literal(Literal::Bool(true)))),
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(bool_expr()),
+        arms: vec![arm],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_match_literal_pattern_does_not_panic() {
+    let arm = MatchArm {
+        pattern: Spanned::dummy(Pattern::Literal(Literal::Bool(true))),
+        result: Spanned::dummy(MatchResult::Expr(Expr::Literal(Literal::Bool(false)))),
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(bool_expr()),
+        arms: vec![arm],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_match_destructure_pattern_does_not_panic() {
+    let arm = MatchArm {
+        pattern: Spanned::dummy(Pattern::Destructure {
+            name: simple_name("MyType"),
+            fields: vec![],
+        }),
+        result: Spanned::dummy(MatchResult::Expr(Expr::Literal(Literal::Bool(true)))),
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(bool_expr()),
+        arms: vec![arm],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_match_or_pattern_does_not_panic() {
+    let arm = MatchArm {
+        pattern: Spanned::dummy(Pattern::Or(vec![
+            Spanned::dummy(Pattern::Literal(Literal::Bool(true))),
+            Spanned::dummy(Pattern::Literal(Literal::Bool(false))),
+        ])),
+        result: Spanned::dummy(MatchResult::Expr(Expr::Literal(Literal::Bool(true)))),
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(bool_expr()),
+        arms: vec![arm],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}
+
+#[test]
+fn lower_expr_match_guard_pattern_does_not_panic() {
+    let arm = MatchArm {
+        pattern: Spanned::dummy(Pattern::Guard {
+            pattern: Box::new(Spanned::dummy(Pattern::Wildcard)),
+            condition: Box::new(bool_expr()),
+        }),
+        result: Spanned::dummy(MatchResult::Expr(Expr::Literal(Literal::Bool(true)))),
+        span: Span::DUMMY,
+    };
+    let expr = Spanned::dummy(Expr::Match {
+        scrutinee: Box::new(bool_expr()),
+        arms: vec![arm],
+    });
+    let (policies, _) = lower::compile(&policy_with_when_expr(expr));
+    assert_eq!(policies.len(), 1);
+}

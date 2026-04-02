@@ -1,0 +1,458 @@
+// ═══════════════════════════════════════════════════════════════════
+//  Aegis Policy Language — pest PEG grammar
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Implicit whitespace and comments ────────────────────────────────
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ ("//" ~ (!"\n" ~ ANY)*) | ("/*" ~ (!"*/" ~ ANY)* ~ "*/") }
+
+// ── Identifier helpers ───────────────────────────────────────────────
+
+id_start    = _{ ASCII_ALPHA | "_" }
+id_continue = _{ ASCII_ALPHANUMERIC | "_" }
+
+// All reserved keywords — used to prevent keyword-as-ident matches.
+// Must be atomic so the !id_continue check runs without whitespace insertion.
+keyword = @{
+    ( "policy" | "scope" | "on" | "rule" | "when" | "where" | "in"
+    | "allow" | "deny" | "audit" | "redact"
+    | "proof" | "invariant" | "assert" | "always" | "eventually"
+    | "never" | "until" | "before" | "after" | "next" | "within" | "during"
+    | "any" | "all" | "none" | "exists"
+    | "import" | "from" | "as" | "let" | "def" | "type" | "extends" | "with"
+    | "match"
+    | "rate_limit" | "quota" | "severity" | "context" | "count" | "per"
+    | "log" | "notify" | "escalate" | "block" | "tag"
+    | "contains" | "matches" | "starts_with" | "ends_with" | "implies"
+    | "int" | "float" | "bool" | "string" | "duration"
+    | "List" | "Map" | "Set"
+    | "critical" | "high" | "medium" | "low" | "info"
+    | "true" | "false"
+    ) ~ !id_continue
+}
+
+// An identifier: cannot be a keyword, must start with a letter/underscore.
+// Atomic so WHITESPACE is never inserted inside.
+ident = @{ !keyword ~ id_start ~ id_continue* }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Atomic keyword tokens
+//
+//  Each kw_* rule is atomic, meaning it checks that the keyword is not
+//  followed by id_continue (no whitespace inserted between the literal
+//  and the negative lookahead).  These are used wherever a keyword
+//  appears in a non-atomic rule context.
+// ─────────────────────────────────────────────────────────────────────
+
+kw_policy    = @{ "policy"    ~ !id_continue }
+kw_scope     = @{ "scope"     ~ !id_continue }
+kw_on        = @{ "on"        ~ !id_continue }
+kw_when      = @{ "when"      ~ !id_continue }
+kw_in        = @{ "in"        ~ !id_continue }
+kw_allow     = @{ "allow"     ~ !id_continue }
+kw_deny      = @{ "deny"      ~ !id_continue }
+kw_audit     = @{ "audit"     ~ !id_continue }
+kw_redact    = @{ "redact"    ~ !id_continue }
+kw_proof     = @{ "proof"     ~ !id_continue }
+kw_invariant = @{ "invariant" ~ !id_continue }
+kw_always    = @{ "always"    ~ !id_continue }
+kw_eventually = @{ "eventually" ~ !id_continue }
+kw_never     = @{ "never"     ~ !id_continue }
+kw_until     = @{ "until"     ~ !id_continue }
+kw_before    = @{ "before"    ~ !id_continue }
+kw_after     = @{ "after"     ~ !id_continue }
+kw_next      = @{ "next"      ~ !id_continue }
+kw_within    = @{ "within"    ~ !id_continue }
+kw_any       = @{ "any"       ~ !id_continue }
+kw_all       = @{ "all"       ~ !id_continue }
+kw_none      = @{ "none"      ~ !id_continue }
+kw_exists    = @{ "exists"    ~ !id_continue }
+kw_import    = @{ "import"    ~ !id_continue }
+kw_from      = @{ "from"      ~ !id_continue }
+kw_as        = @{ "as"        ~ !id_continue }
+kw_let       = @{ "let"       ~ !id_continue }
+kw_def       = @{ "def"       ~ !id_continue }
+kw_type      = @{ "type"      ~ !id_continue }
+kw_extends   = @{ "extends"   ~ !id_continue }
+kw_match     = @{ "match"     ~ !id_continue }
+kw_rate_limit = @{ "rate_limit" ~ !id_continue }
+kw_quota     = @{ "quota"     ~ !id_continue }
+kw_severity  = @{ "severity"  ~ !id_continue }
+kw_context   = @{ "context"   ~ !id_continue }
+kw_count     = @{ "count"     ~ !id_continue }
+kw_per       = @{ "per"       ~ !id_continue }
+kw_log       = @{ "log"       ~ !id_continue }
+kw_notify    = @{ "notify"    ~ !id_continue }
+kw_escalate  = @{ "escalate"  ~ !id_continue }
+kw_block     = @{ "block"     ~ !id_continue }
+kw_tag       = @{ "tag"       ~ !id_continue }
+kw_contains  = @{ "contains"  ~ !id_continue }
+kw_matches   = @{ "matches"   ~ !id_continue }
+kw_starts_with = @{ "starts_with" ~ !id_continue }
+kw_ends_with   = @{ "ends_with"   ~ !id_continue }
+kw_implies   = @{ "implies"   ~ !id_continue }
+kw_with      = @{ "with"      ~ !id_continue }
+kw_int_ty    = @{ "int"       ~ !id_continue }
+kw_float_ty  = @{ "float"     ~ !id_continue }
+kw_bool_ty   = @{ "bool"      ~ !id_continue }
+kw_string_ty = @{ "string"    ~ !id_continue }
+kw_duration_ty = @{ "duration" ~ !id_continue }
+kw_list_ty   = @{ "List"      ~ !id_continue }
+kw_map_ty    = @{ "Map"       ~ !id_continue }
+kw_set_ty    = @{ "Set"       ~ !id_continue }
+kw_critical  = @{ "critical"  ~ !id_continue }
+kw_high      = @{ "high"      ~ !id_continue }
+kw_medium    = @{ "medium"    ~ !id_continue }
+kw_low       = @{ "low"       ~ !id_continue }
+kw_info      = @{ "info"      ~ !id_continue }
+kw_true      = @{ "true"      ~ !id_continue }
+kw_false     = @{ "false"     ~ !id_continue }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Literals
+// ─────────────────────────────────────────────────────────────────────
+
+// Duration before float/int so "5ms" is not split as "5" + "ms"
+// bool_lit before ident so "true"/"false" not parsed as identifiers
+literal = { duration_lit | float_lit | bool_lit | int_lit | string_lit | raw_string_lit | regex_lit }
+
+bool_lit     = @{ ("true" | "false") ~ !id_continue }
+int_lit      = @{ ASCII_DIGIT+ }
+float_lit    = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+// "ms" must come before "m" to avoid matching "ms" as "m"
+duration_lit = @{ ASCII_DIGIT+ ~ ("ms" | "s" | "m" | "h" | "d") }
+
+str_char     = _{ "\\" ~ ANY | (!("\"" | "\\" | "\r" | "\n") ~ ANY) }
+string_lit   = @{ "\"" ~ str_char* ~ "\"" }
+raw_string_lit = @{ "r\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+regex_char   = _{ "\\" ~ ANY | (!("/" | "\r" | "\n") ~ ANY) }
+regex_flags  = @{ ('a'..'z')+ }
+regex_lit    = @{ "/" ~ regex_char+ ~ "/" ~ regex_flags? }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Names
+// ─────────────────────────────────────────────────────────────────────
+
+qualified_name = { ident ~ ("." ~ ident)* }
+
+// context.foo.bar captured as a unit
+context_expr = { kw_context ~ "." ~ qualified_name }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Types
+// ─────────────────────────────────────────────────────────────────────
+
+ty         = { base_ty ~ ("|" ~ base_ty)* }
+base_ty    = { primitive_ty | list_ty | map_ty | set_ty | "(" ~ ty ~ ")" | user_ty }
+primitive_ty = {
+    kw_int_ty | kw_float_ty | kw_bool_ty | kw_string_ty | kw_duration_ty
+}
+list_ty    = { kw_list_ty ~ "<" ~ ty ~ ">" }
+map_ty     = { kw_map_ty ~ "<" ~ ty ~ "," ~ ty ~ ">" }
+set_ty     = { kw_set_ty ~ "<" ~ ty ~ ">" }
+user_ty    = { qualified_name ~ generic_args? }
+generic_args = { "<" ~ ty ~ ("," ~ ty)* ~ ">" }
+
+generic_params = { "<" ~ generic_param ~ ("," ~ generic_param)* ~ ">" }
+generic_param  = { ident ~ (kw_extends ~ ty)? }
+
+typed_field      = { ident ~ ":" ~ ty }
+typed_field_list = { typed_field ~ ("," ~ typed_field)* ~ ","? }
+typed_param      = { ident ~ ":" ~ ty }
+typed_param_list = { typed_param ~ ("," ~ typed_param)* }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Expressions  (low → high precedence)
+// ─────────────────────────────────────────────────────────────────────
+
+expression = { implies_expr }
+
+implies_expr = { or_expr ~ (kw_implies ~ or_expr)? }
+
+or_kw    = @{ "or"  ~ !id_continue }
+and_kw   = @{ "and" ~ !id_continue }
+
+or_op    = { "||" | or_kw }
+and_op   = { "&&" | and_kw }
+eq_op    = { "==" | "!=" }
+rel_op   = { "<=" | ">=" | "<" | ">" | kw_in }
+
+or_expr  = { and_expr ~ (or_op ~ and_expr)* }
+and_expr = { eq_expr ~ (and_op ~ eq_expr)* }
+eq_expr  = { rel_expr ~ (eq_op ~ rel_expr)* }
+rel_expr = { temporal_expr ~ (rel_op ~ temporal_expr)* }
+
+// Temporal operators sit above arithmetic.
+temporal_expr = { temporal_atom ~ (kw_until ~ expression)? }
+
+temporal_atom = {
+    always_expr
+  | eventually_expr
+  | never_expr
+  | next_expr
+  | before_expr
+  | after_expr
+  | add_expr
+}
+
+always_expr      = { kw_always      ~ "(" ~ expression ~ ")" ~ (kw_within ~ expression)? }
+eventually_expr  = { kw_eventually  ~ "(" ~ expression ~ ")" ~ (kw_within ~ expression)? }
+never_expr       = { kw_never       ~ "(" ~ expression ~ ")" }
+next_expr        = { kw_next        ~ "(" ~ expression ~ ")" }
+before_expr      = { kw_before      ~ "(" ~ expression ~ "," ~ expression ~ ")" }
+after_expr       = { kw_after       ~ "(" ~ expression ~ "," ~ expression ~ ")" }
+
+add_op   = { "+" | "-" }
+add_expr = { mul_expr ~ (add_op ~ mul_expr)* }
+
+mul_op   = { "*" | "/" | "%" }
+mul_expr = { unary_expr ~ (mul_op ~ unary_expr)* }
+
+unary_op   = { "!" | "-" }
+unary_expr = { (unary_op ~ unary_expr) | postfix_expr }
+
+postfix_expr = { primary ~ postfix_op* }
+
+postfix_op = {
+    postfix_dot_op
+  | postfix_index_op
+  | postfix_call_op
+  | postfix_predicate_op
+}
+
+// field access or method call — the dot case
+postfix_dot_op = { "." ~ ident ~ postfix_call_op? }
+
+// standalone call
+postfix_call_op = { "(" ~ argument_list? ~ ")" }
+
+// index access
+postfix_index_op = { "[" ~ expression ~ "]" }
+
+// built-in predicates
+predicate_kw = { kw_contains | kw_matches | kw_starts_with | kw_ends_with }
+postfix_predicate_op = { predicate_kw ~ expression }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Primary expressions
+// ─────────────────────────────────────────────────────────────────────
+
+primary = {
+    literal
+  | context_expr
+  | match_expr
+  | quantifier_expr
+  | count_expr
+  | list_expr
+  | object_expr
+  | lambda_expr    // must be before grouped_expr — (x, y) => ... vs (expr)
+  | grouped_expr
+  | qualified_name
+}
+
+grouped_expr = { "(" ~ expression ~ ")" }
+
+// ── Quantifiers ──────────────────────────────────────────────────────
+
+quantifier_kw   = { kw_all | kw_any | kw_none | kw_exists }
+quantifier_expr = { quantifier_kw ~ "(" ~ expression ~ "," ~ lambda_expr ~ ")" }
+
+count_expr = { kw_count ~ "(" ~ expression ~ ("," ~ lambda_expr)? ~ ")" }
+
+// ── Collections ──────────────────────────────────────────────────────
+
+list_expr   = { "[" ~ (expression ~ ("," ~ expression)*)? ~ "]" }
+object_expr = { "{" ~ (object_field ~ ("," ~ object_field)* ~ ","?)? ~ "}" }
+object_field = { (ident | string_lit) ~ ":" ~ expression }
+
+// ── Arguments ────────────────────────────────────────────────────────
+
+argument_list = { argument ~ ("," ~ argument)* }
+// Named arg: ident = expr — but "= >" would be lambda, so exclude "=>"
+argument      = { (ident ~ "=" ~ !">" ~ expression) | expression }
+
+// ── Lambda expressions ────────────────────────────────────────────────
+
+lambda_expr   = { multi_lambda | single_lambda }
+single_lambda = { ident ~ "=>" ~ expression }
+multi_lambda  = { "(" ~ lambda_param_list ~ ")" ~ "=>" ~ expression }
+
+lambda_param_list = { lambda_param ~ ("," ~ lambda_param)* }
+lambda_param      = { ident ~ (":" ~ ty)? }
+
+// ── Match expressions ─────────────────────────────────────────────────
+
+match_expr = { kw_match ~ expression ~ "{" ~ match_arm ~ ("," ~ match_arm)* ~ ","? ~ "}" }
+match_arm  = { pattern ~ "->" ~ match_result }
+
+match_result = { verdict_clause | block_expr | expression }
+
+// ── Patterns ─────────────────────────────────────────────────────────
+
+pattern         = { or_pattern }
+or_pattern      = { primary_pattern ~ ("|" ~ primary_pattern)* }
+primary_pattern = { guarded_pattern | base_pattern }
+guarded_pattern = { base_pattern ~ kw_when ~ expression }
+
+base_pattern = {
+    "_"
+  | literal
+  | qualified_name ~ "{" ~ pattern_field_list? ~ "}"
+  | "[" ~ pattern_list? ~ "]"
+  | "(" ~ pattern ~ ")"
+  | ident
+}
+
+pattern_field_list = { pattern_field ~ ("," ~ pattern_field)* ~ ","? }
+pattern_field      = { ident ~ ":" ~ pattern | "_" | ident }
+
+pattern_list = { pattern ~ ("," ~ pattern)* ~ ","? }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Block expressions
+// ─────────────────────────────────────────────────────────────────────
+
+block_expr = { "{" ~ block_statement* ~ "}" }
+
+block_statement = {
+    binding_decl
+  | verdict_clause
+  | action_clause
+  | expression ~ ";"?
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Annotations
+// ─────────────────────────────────────────────────────────────────────
+
+annotation       = { "@" ~ ident ~ ("(" ~ annotation_args ~ ")")? }
+annotation_args  = { annotation_arg ~ ("," ~ annotation_arg)* }
+annotation_arg   = { (ident ~ ":" ~ annotation_value) | annotation_value }
+annotation_value = { literal | list_literal }
+list_literal     = { "[" ~ (annotation_value ~ ("," ~ annotation_value)*)? ~ "]" }
+
+// ─────────────────────────────────────────────────────────────────────
+//  Declarations
+// ─────────────────────────────────────────────────────────────────────
+
+// ── Imports ──────────────────────────────────────────────────────────
+
+import_decl = {
+    (kw_import ~ import_path ~ (kw_as ~ ident)? ~ ";"?)
+  | (kw_from ~ import_path ~ kw_import ~ import_targets ~ ";"?)
+}
+
+import_path    = { ident ~ ("." ~ ident)* }
+import_targets = { "*" | import_target ~ ("," ~ import_target)* }
+import_target  = { ident ~ (kw_as ~ ident)? }
+
+// ── Severity ─────────────────────────────────────────────────────────
+
+severity_level  = { kw_critical | kw_high | kw_medium | kw_low | kw_info }
+severity_clause = { kw_severity ~ severity_level ~ ";"? }
+
+// ── Scope ─────────────────────────────────────────────────────────────
+
+scope_target = { qualified_name | string_lit }
+scope_clause = { kw_scope ~ scope_target ~ ("," ~ scope_target)* ~ ";"? }
+
+// ── Constraints ───────────────────────────────────────────────────────
+
+constraint_kind = { kw_rate_limit | kw_quota }
+constraint_decl = {
+    constraint_kind ~ qualified_name ~ ":" ~ expression ~ kw_per ~ expression ~ ";"?
+}
+
+// ── Rule clauses ──────────────────────────────────────────────────────
+
+when_clause    = { kw_when ~ expression ~ ";"? }
+
+verdict_kw     = { kw_allow | kw_deny | kw_audit | kw_redact }
+verdict_clause = { verdict_kw ~ (kw_with ~ expression)? ~ ";"? }
+
+action_verb = { kw_log | kw_notify | kw_escalate | kw_block | kw_tag }
+// arg_key accepts plain identifiers OR any action-verb keyword as a named arg key
+// (e.g. `notify notify: "security-team"` is valid in Aegis)
+arg_key = { kw_log | kw_notify | kw_escalate | kw_block | kw_tag | ident }
+action_args = { named_action_args | expression }
+named_action_args = { arg_key ~ ":" ~ expression ~ ("," ~ arg_key ~ ":" ~ expression)* }
+action_clause = { action_verb ~ action_args? ~ ";"? }
+
+rule_clause = {
+    when_clause
+  | verdict_clause
+  | action_clause
+  | severity_clause
+  | constraint_decl
+}
+
+rule_body = { rule_clause+ }
+
+rule_decl = {
+    annotation*
+    ~ kw_on ~ scope_target ~ ("," ~ scope_target)*
+    ~ "{" ~ rule_body ~ "}"
+}
+
+// ── Policy members ────────────────────────────────────────────────────
+
+policy_member = {
+    severity_clause
+  | scope_clause
+  | rule_decl
+  | proof_decl
+  | constraint_decl
+  | binding_decl
+  | function_decl
+}
+
+policy_decl = {
+    annotation*
+    ~ kw_policy ~ ident ~ (kw_extends ~ qualified_name)?
+    ~ "{" ~ policy_member* ~ "}"
+}
+
+// ── Proof / invariant ─────────────────────────────────────────────────
+
+invariant_decl = {
+    kw_invariant ~ ident ~ "{"
+    ~ expression ~ (";" ~ expression)* ~ ";"?
+    ~ "}"
+}
+
+proof_decl = {
+    kw_proof ~ ident ~ "{" ~ invariant_decl* ~ "}"
+}
+
+// ── Type declarations ─────────────────────────────────────────────────
+
+type_decl = {
+    kw_type ~ ident ~ generic_params? ~ "{" ~ typed_field_list ~ "}"
+}
+
+// ── Bindings and functions ────────────────────────────────────────────
+
+binding_decl = {
+    kw_let ~ ident ~ (":" ~ ty)? ~ "=" ~ expression ~ ";"?
+}
+
+function_decl = {
+    kw_def ~ ident ~ "(" ~ typed_param_list? ~ ")" ~ "->" ~ ty ~ "=" ~ expression ~ ";"?
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Top-level program
+// ─────────────────────────────────────────────────────────────────────
+
+declaration = {
+    import_decl
+  | policy_decl
+  | proof_decl
+  | type_decl
+  | binding_decl
+  | function_decl
+}
+
+program = { SOI ~ declaration* ~ EOI }

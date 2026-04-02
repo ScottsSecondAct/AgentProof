@@ -98,30 +98,22 @@ fn cmd_compile(args: &[String]) -> i32 {
 
     let filename = input.to_string_lossy();
 
-    // Parse → AST (placeholder until ANTLR4 integration)
-    // For now, we print a message about what would happen.
-    // The full pipeline: parse → check → lower → serialize
     eprintln!("  Compiling {filename}...");
 
-    // In the real pipeline:
-    // 1. let tree = parser.program();
-    // 2. let program = AstBuilder::new(&source).build_program(tree);
-    // 3. let mut checker = TypeChecker::new();
-    //    checker.check_program(&program);
-    //    if checker.diagnostics().has_errors() { report and exit }
-    // 4. let (policies, diag) = lower::compile(&program);
-    // 5. for policy in &policies {
-    //        bytecode::write_file(&output, policy);
-    //    }
+    let result = run_pipeline(&source, &filename);
 
-    // For now, demonstrate the pipeline is wired correctly by
-    // constructing a minimal program and running it through.
-    let demo_result = run_demo_pipeline(&source, &filename);
-
-    match demo_result {
+    match result {
         Ok(policies) => {
-            for policy in &policies {
-                let out_path = if policies.len() == 1 {
+            // If the source had no policy declarations, write a placeholder empty policy
+            // so the output file is always created (consistent with `aegisc compile` semantics).
+            let effective_policies: Vec<crate::ir::CompiledPolicy> = if policies.is_empty() {
+                vec![empty_policy()]
+            } else {
+                policies
+            };
+
+            for policy in &effective_policies {
+                let out_path = if effective_policies.len() == 1 {
                     output.clone()
                 } else {
                     output.with_file_name(format!(
@@ -175,7 +167,7 @@ fn cmd_check(args: &[String]) -> i32 {
     let filename = input.to_string_lossy();
     eprintln!("  Checking {filename}...");
 
-    match run_demo_pipeline(&source, &filename) {
+    match run_pipeline(&source, &filename) {
         Ok(policies) => {
             let total_rules: usize = policies.iter().map(|p| p.rules.len()).sum();
             let total_sms: usize = policies.iter().map(|p| p.state_machines.len()).sum();
@@ -211,7 +203,7 @@ fn cmd_dump(args: &[String]) -> i32 {
 
     let filename = input.to_string_lossy();
 
-    match run_demo_pipeline(&source, &filename) {
+    match run_pipeline(&source, &filename) {
         Ok(policies) => {
             for policy in &policies {
                 match crate::bytecode::to_json(policy) {
@@ -297,74 +289,51 @@ fn parse_compile_args(args: &[String]) -> Option<(PathBuf, PathBuf)> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-//  Demo pipeline — exercises check + lower without the ANTLR4 parser
-//
-//  This constructs a minimal AST programmatically to demonstrate the
-//  pipeline works end-to-end. When the ANTLR4 parser is integrated,
-//  this is replaced by the real parse → visit → check → lower flow.
+//  Real pipeline — parse → type-check → lower
 // ═══════════════════════════════════════════════════════════════════════
 
-fn run_demo_pipeline(
-    _source: &str,
+fn run_pipeline(
+    source: &str,
     filename: &str,
 ) -> Result<Vec<crate::ir::CompiledPolicy>, String> {
-    use crate::ast::*;
     use crate::checker::TypeChecker;
-    use smol_str::SmolStr;
 
-    // Construct a minimal program to exercise the pipeline.
-    // In production, this comes from the ANTLR4 parser + visitor.
-    let program = Program {
-        declarations: vec![Spanned::new(
-            Declaration::Policy(PolicyDecl {
-                annotations: vec![],
-                name: Spanned::new(SmolStr::new("DemoPolicy"), Span::new(0, 10)),
-                extends: None,
-                members: vec![
-                    Spanned::new(
-                        PolicyMember::Severity(SeverityLevel::High),
-                        Span::new(12, 25),
-                    ),
-                    Spanned::new(
-                        PolicyMember::Scope(vec![ScopeTarget::Name(QualifiedName {
-                            segments: vec![Spanned::new(
-                                SmolStr::new("tool_call"),
-                                Span::new(30, 39),
-                            )],
-                            span: Span::new(30, 39),
-                        })]),
-                        Span::new(26, 40),
-                    ),
-                ],
-            }),
-            Span::new(0, 50),
-        )],
-        span: Span::new(0, 50),
-    };
+    // 1. Parse source into AST
+    let (program, parse_diag) = crate::parser::parse_source(source, filename);
 
-    // Type-check
-    let mut checker = TypeChecker::new();
-    checker.check_program(&program);
-
-    let diag = checker.into_diagnostics();
-    if diag.has_errors() {
-        let rendered = diag.render(_source, filename);
+    if parse_diag.has_errors() {
+        let rendered = parse_diag.render(source, filename);
         return Err(format!(
-            "{rendered}\nerror: aborting due to {} error(s)\n",
-            diag.error_count()
+            "{rendered}\nerror: aborting due to {} parse error(s)\n",
+            parse_diag.error_count()
         ));
     }
 
-    // Show warnings
-    if diag.warning_count() > 0 {
-        let rendered = diag.render(_source, filename);
-        eprint!("{rendered}");
+    if parse_diag.warning_count() > 0 {
+        eprint!("{}", parse_diag.render(source, filename));
     }
 
-    // Lower to IR
+    // 2. Type-check
+    let mut checker = TypeChecker::new();
+    checker.check_program(&program);
+
+    let check_diag = checker.into_diagnostics();
+    if check_diag.has_errors() {
+        let rendered = check_diag.render(source, filename);
+        return Err(format!(
+            "{rendered}\nerror: aborting due to {} error(s)\n",
+            check_diag.error_count()
+        ));
+    }
+
+    if check_diag.warning_count() > 0 {
+        eprint!("{}", check_diag.render(source, filename));
+    }
+
+    // 3. Lower to IR
     let (policies, lower_diag) = crate::lower::compile(&program);
     if lower_diag.has_errors() {
-        let rendered = lower_diag.render(_source, filename);
+        let rendered = lower_diag.render(source, filename);
         return Err(format!(
             "{rendered}\nerror: lowering failed with {} error(s)\n",
             lower_diag.error_count()
@@ -372,4 +341,26 @@ fn run_demo_pipeline(
     }
 
     Ok(policies)
+}
+
+/// Return a minimal empty [`CompiledPolicy`] used as a placeholder when the
+/// source file contains no policy declarations (e.g., a comment-only stub).
+fn empty_policy() -> crate::ir::CompiledPolicy {
+    use crate::ast::SeverityLevel;
+    use crate::ir::{CompiledPolicy, PolicyMetadata};
+    use smol_str::SmolStr;
+
+    CompiledPolicy {
+        name: SmolStr::new("__empty__"),
+        severity: SeverityLevel::Info,
+        scopes: vec![],
+        rules: vec![],
+        constraints: vec![],
+        state_machines: vec![],
+        metadata: PolicyMetadata {
+            annotations: vec![],
+            source_hash: 0,
+            compiler_version: SmolStr::new(env!("CARGO_PKG_VERSION")),
+        },
+    }
 }

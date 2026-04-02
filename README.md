@@ -103,7 +103,7 @@ These compile to deterministic state machines at build time. At runtime, the ver
 ```
 ┌─────────────────────────────────────────────────────┐
 │  .aegis source                                      │
-│    → ANTLR4 parse                                   │
+│    → pest PEG parse                                 │
 │    → Type check                                     │
 │    → Compile temporal invariants to state machines   │
 │    → Serialize to .aegisc bytecode                   │
@@ -139,11 +139,10 @@ These compile to deterministic state machines at build time. At runtime, the ver
 ```
 agentproof/
 ├── aegis-compiler/      # Rust — parser, type checker, IR lowering, bytecode
+│   └── src/aegis.pest   # pest PEG grammar
 ├── aegis-runtime/       # Rust — event evaluation, state machines, rate limits
 ├── agentproof-python/   # Rust (pyo3) + Python — SDK and framework integrations
-├── examples/            # Example .aegis policy files
-├── AegisLexer.g4        # ANTLR4 lexer grammar
-└── AegisParser.g4       # ANTLR4 parser grammar
+└── examples/            # Example .aegis policy files
 ```
 
 ## Building from Source

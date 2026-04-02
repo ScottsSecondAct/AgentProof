@@ -17,9 +17,8 @@ The dashboard (Next.js) and TypeScript SDK are planned but not yet built.
 ```
 agentproof/
 ├── CLAUDE.md                  # You are here
-├── AegisLexer.g4              # ANTLR4 lexer grammar
-├── AegisParser.g4             # ANTLR4 parser grammar
 ├── aegis-compiler/            # Rust: parser, type checker, IR lowering, bytecode
+│   ├── src/aegis.pest         # pest PEG grammar
 │   └── CLAUDE.md
 ├── aegis-runtime/             # Rust: event evaluation, state machines, rate limits
 │   └── CLAUDE.md
@@ -31,15 +30,15 @@ agentproof/
 
 ## Architecture in One Paragraph
 
-`.aegis` source → ANTLR4 parse → typed AST → `TypeChecker` → validated AST → `Lowering` → `CompiledPolicy` (with state machines) → `.aegisc` bytecode. At runtime, the verifier loads `.aegisc` files, intercepts agent tool calls, evaluates compiled rules, advances state machines for temporal invariants, enforces rate limits, and returns verdicts (allow/deny/audit/redact). The Python SDK wraps this via pyo3 so users write `enforce(client, policy="guard.aegisc")`.
+`.aegis` source → pest PEG parse (`src/aegis.pest`) → typed AST → `TypeChecker` → validated AST → `Lowering` → `CompiledPolicy` (with state machines) → `.aegisc` bytecode. At runtime, the verifier loads `.aegisc` files, intercepts agent tool calls, evaluates compiled rules, advances state machines for temporal invariants, enforces rate limits, and returns verdicts (allow/deny/audit/redact). The Python SDK wraps this via pyo3 so users write `enforce(client, policy="guard.aegisc")`.
 
 ## Language and Tooling
 
 - **Rust edition**: 2021
 - **Minimum Rust version**: stable (no nightly features)
 - **Python**: 3.9+ via maturin build backend
-- **Grammars**: ANTLR4 (lexer + parser, `-Dlanguage=Rust` target)
-- **Key crates**: `serde`, `serde_json`, `smol_str`, `thiserror`, `pyo3`, `tokio` (runtime only)
+- **Parser**: pest PEG (`aegis-compiler/src/aegis.pest`)
+- **Key crates**: `serde`, `serde_json`, `smol_str`, `thiserror`, `pest`, `pest_derive`, `pyo3`, `tokio` (runtime only)
 
 ## Coding Conventions
 

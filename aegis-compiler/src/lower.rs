@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use smol_str::SmolStr;
 
@@ -50,6 +50,45 @@ impl LocalScope {
         }
         None
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Inheritance resolution
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Collect the effective member list for a policy by walking its inheritance
+/// chain. Ancestors are prepended (base first), so derived members appear last
+/// and take precedence for last-wins fields like `severity`.
+///
+/// `visited` guards against inheritance cycles — a policy seen twice yields an
+/// empty slice for that second visit rather than looping forever.  Because
+/// Aegis uses single inheritance (`extends` takes at most one base), a true
+/// diamond (shared ancestor reachable via two paths) cannot arise.  Each
+/// ancestor therefore appears at most once in the returned member list, and
+/// the `visited` set is only exercised by malformed mutual-extension cycles.
+fn collect_inherited_members<'a>(
+    policy: &'a PolicyDecl,
+    all_policies: &HashMap<SmolStr, &'a PolicyDecl>,
+    visited: &mut HashSet<SmolStr>,
+) -> Vec<&'a Spanned<PolicyMember>> {
+    let name = policy.name.node.clone();
+    if !visited.insert(name) {
+        // Already on the current ancestry path — cycle detected.
+        return vec![];
+    }
+
+    let mut members: Vec<&'a Spanned<PolicyMember>> = Vec::new();
+
+    if let Some(base_name) = &policy.extends {
+        let base_key = base_name.last().node.clone();
+        if let Some(&base) = all_policies.get(&base_key) {
+            let base_members = collect_inherited_members(base, all_policies, visited);
+            members.extend(base_members);
+        }
+    }
+
+    members.extend(policy.members.iter());
+    members
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -120,11 +159,21 @@ impl Lowering {
             })
             .collect();
 
+        // Build a name → decl map for inheritance resolution
+        let policy_map: HashMap<SmolStr, &PolicyDecl> = program
+            .declarations
+            .iter()
+            .filter_map(|d| match &d.node {
+                Declaration::Policy(pd) => Some((pd.name.node.clone(), pd)),
+                _ => None,
+            })
+            .collect();
+
         // Lower each policy
         let mut policies = Vec::new();
         for decl in &program.declarations {
             if let Declaration::Policy(pd) = &decl.node {
-                let compiled = self.lower_policy(pd, &top_level_proofs);
+                let compiled = self.lower_policy(pd, &top_level_proofs, &policy_map);
                 policies.push(compiled);
             }
         }
@@ -140,6 +189,7 @@ impl Lowering {
         &mut self,
         policy: &PolicyDecl,
         top_level_proofs: &[&ProofDecl],
+        all_policies: &HashMap<SmolStr, &PolicyDecl>,
     ) -> CompiledPolicy {
         let mut severity = SeverityLevel::Medium; // default
         let mut scopes = Vec::new();
@@ -149,7 +199,12 @@ impl Lowering {
 
         self.locals.push();
 
-        for member in &policy.members {
+        // Resolve effective members: base ancestors first, own members last.
+        // Own members can override inherited severity/scope (last-wins semantics).
+        let mut visited = HashSet::new();
+        let effective_members = collect_inherited_members(policy, all_policies, &mut visited);
+
+        for member in effective_members {
             match &member.node {
                 PolicyMember::Severity(s) => severity = *s,
 

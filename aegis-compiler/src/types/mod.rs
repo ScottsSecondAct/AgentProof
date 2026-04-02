@@ -88,6 +88,16 @@ impl Ty {
         matches!(self, Ty::List(_) | Ty::Set(_))
     }
 
+    /// Returns true for open / dynamic struct types (no declared fields).
+    ///
+    /// Open structs are used for `event`, `context`, and values accessed
+    /// through them.  The type checker allows any field access on them and
+    /// treats them as compatible with string predicates, since their actual
+    /// field types are only known at runtime.
+    pub fn is_open_struct(&self) -> bool {
+        matches!(self, Ty::Struct(s) if s.fields.is_empty())
+    }
+
     /// The element type if this is a collection, None otherwise.
     pub fn element_type(&self) -> Option<&Ty> {
         match self {
@@ -221,19 +231,17 @@ impl TypeEnv {
     fn register_builtins(&mut self) {
         let scope = self.scopes.last_mut().unwrap();
 
-        // The `event` binding is always available inside rule bodies.
-        // Its actual type is refined per-scope based on the `on` clause.
+        // The global `event` binding is an open/dynamic struct used as a
+        // fallback when a rule targets an unknown event name or multiple
+        // event names.  For single-target rules with a recognised event name
+        // (e.g. `on tool_call`), `check_rule` injects a typed `event` binding
+        // in the rule scope that shadows this global one, enabling field-level
+        // type checking via `event_schema`.
         scope.bindings.insert(
             SmolStr::new("event"),
             Ty::Struct(StructType {
                 name: SmolStr::new("Event"),
-                fields: vec![
-                    (SmolStr::new("type"), Ty::Primitive(PrimitiveType::String)),
-                    (
-                        SmolStr::new("timestamp"),
-                        Ty::Primitive(PrimitiveType::Duration),
-                    ),
-                ],
+                fields: vec![],
                 type_params: vec![],
             }),
         );
@@ -308,6 +316,82 @@ impl TypeEnv {
         let id = TypeId(self.next_type_id);
         self.next_type_id += 1;
         Ty::Var(id)
+    }
+}
+
+/// Return the statically-known field schema for a named event type, or `None`
+/// if the event name is not in the built-in registry (falling back to the
+/// open/dynamic struct at the global scope).
+///
+/// The schemas here are the canonical field shapes for the core AgentProof
+/// event types.  They allow the type checker to catch unknown field access
+/// (E0108) and type mismatches (E0106) for well-known events at compile time.
+pub fn event_schema(name: &str) -> Option<Ty> {
+    use crate::ast::PrimitiveType;
+    let s = |s: &str| SmolStr::new(s);
+    let str_ty = || Ty::Primitive(PrimitiveType::String);
+    let int_ty = || Ty::Primitive(PrimitiveType::Int);
+    let bool_ty = || Ty::Primitive(PrimitiveType::Bool);
+
+    match name {
+        "tool_call" => Some(Ty::Struct(StructType {
+            name: s("ToolCallEvent"),
+            fields: vec![
+                (s("tool_name"), str_ty()),
+                (s("arguments"), Ty::List(Box::new(str_ty()))),
+                (s("call_id"), str_ty()),
+            ],
+            type_params: vec![],
+        })),
+        "external_request" => Some(Ty::Struct(StructType {
+            name: s("ExternalRequestEvent"),
+            fields: vec![
+                (s("url"), str_ty()),
+                (s("method"), str_ty()),
+                (
+                    s("endpoint"),
+                    Ty::Struct(StructType {
+                        name: s("Endpoint"),
+                        fields: vec![(s("url"), str_ty()), (s("method"), str_ty())],
+                        type_params: vec![],
+                    }),
+                ),
+            ],
+            type_params: vec![],
+        })),
+        "data_access" => Some(Ty::Struct(StructType {
+            name: s("DataAccessEvent"),
+            fields: vec![
+                (s("resource"), str_ty()),
+                (s("resource_type"), str_ty()),
+                (s("user_id"), str_ty()),
+            ],
+            type_params: vec![],
+        })),
+        "message" => Some(Ty::Struct(StructType {
+            name: s("MessageEvent"),
+            fields: vec![(s("content"), str_ty()), (s("role"), str_ty())],
+            type_params: vec![],
+        })),
+        "file_access" => Some(Ty::Struct(StructType {
+            name: s("FileAccessEvent"),
+            fields: vec![
+                (s("path"), str_ty()),
+                (s("operation"), str_ty()),
+                (s("size_bytes"), int_ty()),
+            ],
+            type_params: vec![],
+        })),
+        "code_execution" => Some(Ty::Struct(StructType {
+            name: s("CodeExecutionEvent"),
+            fields: vec![
+                (s("language"), str_ty()),
+                (s("sandboxed"), bool_ty()),
+                (s("source"), str_ty()),
+            ],
+            type_params: vec![],
+        })),
+        _ => None,
     }
 }
 

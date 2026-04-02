@@ -1,4 +1,3 @@
-pub mod adapter;
 pub mod ast;
 pub mod bytecode;
 pub mod checker;
@@ -6,5 +5,5 @@ pub mod cli;
 pub mod diagnostics;
 pub mod ir;
 pub mod lower;
+pub mod parser;
 pub mod types;
-pub mod visitor;

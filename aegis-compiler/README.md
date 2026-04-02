@@ -12,8 +12,8 @@ The compiler takes human-readable Aegis policies and produces an efficient binar
 
 ```
 .aegis source
-  → ANTLR4 lexer/parser
-  → Typed AST with span tracking
+  → pest PEG parser (src/aegis.pest)
+  → Typed AST with real source spans
   → Two-pass type checker (forward references supported)
   → IR lowering (flatten inheritance, compile temporals to automata)
   → .aegisc bytecode serialization

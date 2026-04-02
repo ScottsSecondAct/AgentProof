@@ -211,6 +211,18 @@ impl TypeChecker {
 
         self.env.push_scope();
 
+        // Inject a refined `event` binding when the rule targets a single
+        // literal event name with a known schema.  For multi-event rules or
+        // unrecognised event names the global open/dynamic `event` binding
+        // (registered in `TypeEnv::register_builtins`) remains in scope.
+        if rule.on_events.len() == 1 {
+            if let ScopeTarget::Literal(ev_name) = &rule.on_events[0] {
+                if let Some(schema) = crate::types::event_schema(ev_name.node.as_str()) {
+                    self.env.bind(SmolStr::new("event"), schema);
+                }
+            }
+        }
+
         // Check rule has at least one verdict
         let has_verdict = rule
             .clauses
@@ -404,8 +416,8 @@ impl TypeChecker {
                 if let Some(ty) = self.env.lookup_binding(&full_name) {
                     return ty.clone();
                 }
-                // Single-segment name might be a simple variable
                 if name.segments.len() == 1 {
+                    // Single-segment name might be a simple variable
                     let simple = name.segments[0].node.as_str();
                     if let Some(ty) = self.env.lookup_binding(simple) {
                         return ty.clone();
@@ -413,6 +425,59 @@ impl TypeChecker {
                     if self.env.lookup_function(simple).is_some() {
                         // Return a placeholder — actual checking happens at call site
                         return Ty::Error; // Refined at call
+                    }
+                } else {
+                    // Multi-segment name (e.g. `event.tool_name`).
+                    //
+                    // The pest grammar's `qualified_name` rule greedily matches
+                    // dot-separated identifiers, so `event.tool_name` arrives as
+                    // `Identifier(["event", "tool_name"])` rather than as a
+                    // `FieldAccess` node.  Resolve by looking up the base segment
+                    // and walking the rest as virtual field accesses.
+                    let base = name.segments[0].node.as_str();
+                    if let Some(base_ty) = self.env.lookup_binding(base).cloned() {
+                        let mut ty = base_ty;
+                        for seg in &name.segments[1..] {
+                            ty = match &ty {
+                                Ty::Struct(st) => {
+                                    if let Some((_, ft)) =
+                                        st.fields.iter().find(|(n, _)| n == &seg.node)
+                                    {
+                                        ft.clone()
+                                    } else if st.fields.is_empty() {
+                                        // Open / dynamic struct — allow any field
+                                        Ty::Struct(crate::types::StructType {
+                                            name: SmolStr::new("Dynamic"),
+                                            fields: vec![],
+                                            type_params: vec![],
+                                        })
+                                    } else {
+                                        self.diag.emit(Diagnostic::error(
+                                            seg.span,
+                                            DiagnosticCode::E0108,
+                                            format!(
+                                                "field `{}` not found on type `{}`",
+                                                seg.node, st.name
+                                            ),
+                                        ));
+                                        return Ty::Error;
+                                    }
+                                }
+                                Ty::Error => return Ty::Error,
+                                _ => {
+                                    self.diag.emit(Diagnostic::error(
+                                        span,
+                                        DiagnosticCode::E0108,
+                                        format!(
+                                            "cannot access field `{}` on type `{ty}`",
+                                            seg.node
+                                        ),
+                                    ));
+                                    return Ty::Error;
+                                }
+                            };
+                        }
+                        return ty;
                     }
                 }
                 self.diag.emit(Diagnostic::undefined_var(span, &full_name));
@@ -602,8 +667,14 @@ impl TypeChecker {
 
                 match kind {
                     PredicateKind::Contains => {
-                        // string contains string, or collection contains element
-                        if !subj_ty.is_string() && !subj_ty.is_collection() && !subj_ty.is_error() {
+                        // string contains string, or collection contains element.
+                        // Open structs (event/context fields) are treated as
+                        // dynamically typed and accepted without error.
+                        if !subj_ty.is_string()
+                            && !subj_ty.is_collection()
+                            && !subj_ty.is_error()
+                            && !subj_ty.is_open_struct()
+                        {
                             self.diag.emit(Diagnostic::error(
                                 subject.span,
                                 DiagnosticCode::E0107,
@@ -614,7 +685,8 @@ impl TypeChecker {
                         }
                     }
                     PredicateKind::Matches => {
-                        if !subj_ty.is_string() && !subj_ty.is_error() {
+                        if !subj_ty.is_string() && !subj_ty.is_error() && !subj_ty.is_open_struct()
+                        {
                             self.diag.emit(Diagnostic::error(
                                 subject.span,
                                 DiagnosticCode::E0107,
@@ -623,7 +695,8 @@ impl TypeChecker {
                         }
                     }
                     PredicateKind::StartsWith | PredicateKind::EndsWith => {
-                        if !subj_ty.is_string() && !subj_ty.is_error() {
+                        if !subj_ty.is_string() && !subj_ty.is_error() && !subj_ty.is_open_struct()
+                        {
                             self.diag.emit(Diagnostic::error(
                                 subject.span,
                                 DiagnosticCode::E0107,
