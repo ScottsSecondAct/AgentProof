@@ -82,18 +82,22 @@ uncovered regions fall into six groups:
 
 ---
 
-## aegis-runtime — 0 tests
+## aegis-runtime — 184 tests, all passing
 
-The runtime has no tests at all. Source modules: `engine.rs`, `eval.rs`, `event.rs`, `audit.rs`.
+### Integration tests (`tests/`, 184 tests)
 
-### Needed
+| File | Tests | Coverage |
+|------|-------|----------|
+| `tests/eval_tests.rs` | 118 | Literal evaluation (bool/int/float/string/duration/regex); event/context/policy/local references; missing-field → Null; nested path resolution; arithmetic (Add/Sub/Mul/Div/Mod, int+float widening, string concat, div-by-zero → Null); comparison (Lt/Le/Gt/Ge, cross-type → false); equality (int/float cross-type, null==null); logical short-circuit (And/Or/Implies false-antecedent); membership (`in` list/map/non-collection); unary (Not, Neg int/float/string→Null); predicates (Contains string/list, Matches exact/prefix/suffix/substring, StartsWith/EndsWith, non-string→false); quantifiers (All/Any/None/Exists with empty/match/no-match lists, non-list collection); Count (no filter, with filter, non-list→0, empty→0); List literal; built-ins (len/length/to_string/str/abs/min/max, unknown→Null); method calls on String/List/Map (to_upper, to_lower, trim, split, first/last, has_key, etc.); decision trees (Leaf, VerdictLeaf, Switch literal/guard/default/no-match-no-default→Null) |
+| `tests/engine_tests.rs` | 36 | Empty policy → allow; unconditional deny/audit rule; conditional rule true/false; event-type filter; wildcard (empty on_events); deny overrides audit; field equality condition; verdict reason message; multiple triggered rules; event count increment; reset; policy name; `status()` metadata and event count; state machine `always(true)` happy path, `always(false)` violates on first event and persists, reason string; `always` status after satisfaction; reset restores active state; `never(false)` happy path, `never(true)` violates; `eventually` satisfied immediately, eventually without deadline never violates, eventually deadline expired → deny; rate limit under/at/over limit; sliding window eviction; rate limit scoped to event type; constraint violation details; reset clears rate limiter |
+| `tests/audit_tests.rs` | 30 | Empty log is_empty/len/total_recorded; record increments len; monotonically increasing IDs; ring buffer never exceeds max_entries; ring buffer evicts oldest; total_recorded counts evicted entries; entry fields (policy_name, event_type, verdict, reason, triggered_rules, violation_count, violation details, eval_time_us); by_verdict filter; by_verdict empty result; with_violations filter; by_event_type filter; recent returns last N in reverse order; recent with n>len; recent on empty; stats (empty, verdict counts, violation count, total vs buffered, avg/max eval time); JSON serialization; round-trip JSON deserialization; with_file populates in-memory buffer; Display stats |
 
-- **Evaluator unit tests** (`eval.rs`): binary ops on all type combinations, field access, function calls, null/missing-field edge cases, type-mismatch error paths.
-- **State machine tests** (`engine.rs`): happy path (constraint never violated), violation path (constraint violated mid-sequence), timeout path (deadline expires without `eventually` being satisfied) — for each of `always`, `eventually`, `never`, `until`.
-- **Rate-limit / quota tests**: window sliding, limit enforcement, reset after window expiry.
-- **Audit log tests** (`audit.rs`): every verdict is appended, log is append-only, entries are serializable.
+### Still needed
+
 - **Benchmarks**: the <10ms p99 latency guarantee is a core product claim with zero performance validation. Use `criterion` to measure a realistic policy evaluation (10-rule policy, 2 state machines) against a synthetic event stream.
 - **Fuzz tests**: `cargo-fuzz` target on the expression evaluator with arbitrary `Event` payloads.
+- **`until` state machine tests**: the `compile_until` path is exercised by the compiler IR tests but not by the runtime engine tests.
+- **Context-aware eval tests**: `EvalContext` with nested context/policy fields accessed via multi-segment paths.
 
 ---
 
