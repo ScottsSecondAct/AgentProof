@@ -33,3 +33,7 @@ dev = ["pytest", "pytest-asyncio", "openai", "langchain-core"]
 python-source = "python"
 module-name = "aegis_enforce._agentproof_core"
 features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["python"]

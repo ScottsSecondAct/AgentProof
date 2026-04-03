@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 try:
-    from _agentproof_core import PolicyEngine as _NativeEngine
+    from aegis_enforce._agentproof_core import PolicyEngine as _NativeEngine
 
     _NATIVE_AVAILABLE = True
 except ImportError:

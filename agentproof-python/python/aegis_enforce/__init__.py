@@ -31,9 +31,9 @@ Direct engine usage:
 
 __version__ = "0.1.0"
 
-from agentproof._engine import PolicyEngine, PolicyResult
-from agentproof._enforce import enforce
-from agentproof._interceptors import (
+from aegis_enforce._engine import PolicyEngine, PolicyResult
+from aegis_enforce._enforce import enforce
+from aegis_enforce._interceptors import (
     AgentProofCallbackHandler,
     intercept_openai,
     intercept_tool_call,

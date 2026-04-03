@@ -22,7 +22,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
-from agentproof._engine import PolicyEngine, PolicyResult
+from aegis_enforce._engine import PolicyEngine, PolicyResult
 
 logger = logging.getLogger("agentproof")
 
