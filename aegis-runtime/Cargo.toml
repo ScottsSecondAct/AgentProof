@@ -13,3 +13,8 @@ smol_str = { version = "0.2", features = ["serde"] }
 
 [dev-dependencies]
 pretty_assertions = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "eval_bench"
+harness = false
