@@ -1,4 +1,4 @@
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/ast/nodes.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/ast/nodes.rs
 FN:710,_RNCNvXs0_NtNtCs6BFVBPdMni0_14aegis_compiler3ast5nodesNtB7_13QualifiedNameNtNtCsbNKrcpplAYV_4core3fmt7Display3fmt0Bb_
 FN:463,_RNvMNtNtCs6BFVBPdMni0_14aegis_compiler3ast5nodesNtB2_11DurationLit9to_millis
 FN:700,_RNvMs_NtNtCs6BFVBPdMni0_14aegis_compiler3ast5nodesNtB4_13QualifiedName4last
@@ -143,7 +143,7 @@ BRH:0
 LF:88
 LH:88
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/ast/span.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/ast/span.rs
 FN:45,_RNvMs_NtNtCs6BFVBPdMni0_14aegis_compiler3ast4spanINtB4_7SpannedNtCs1PbeznI62nf_8smol_str7SmolStrE3newB8_
 FN:45,_RNvMs_NtNtCs6BFVBPdMni0_14aegis_compiler3ast4spanINtB4_7SpannedNtNtB6_5nodes10ActionVerbE3newB8_
 FN:45,_RNvMs_NtNtCs6BFVBPdMni0_14aegis_compiler3ast4spanINtB4_7SpannedNtNtB6_5nodes10RuleClauseE3newB8_
@@ -372,7 +372,7 @@ BRH:0
 LF:99
 LH:99
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/bytecode.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/bytecode.rs
 FN:181,_RNvNtCs6BFVBPdMni0_14aegis_compiler8bytecode10write_file
 FN:106,_RNvNtCs6BFVBPdMni0_14aegis_compiler8bytecode11to_bytecode
 FN:157,_RNvNtCs6BFVBPdMni0_14aegis_compiler8bytecode13from_bytecode
@@ -769,7 +769,7 @@ BRH:0
 LF:279
 LH:267
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/checker/mod.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/checker/mod.rs
 FN:446,_RNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler7checkerNtB7_11TypeChecker10check_expr0B9_
 FN:696,_RNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler7checkerNtB7_11TypeChecker10check_exprs0_0B9_
 FN:741,_RNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler7checkerNtB7_11TypeChecker10check_exprs1_0B9_
@@ -1673,7 +1673,7 @@ BRH:0
 LF:766
 LH:471
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/cli.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/cli.rs
 FN:81,_RNvNtCs6BFVBPdMni0_14aegis_compiler3cli11cmd_compile
 FN:226,_RNvNtCs6BFVBPdMni0_14aegis_compiler3cli11cmd_inspect
 FN:53,_RNvNtCs6BFVBPdMni0_14aegis_compiler3cli11print_usage
@@ -1941,7 +1941,7 @@ BRH:0
 LF:218
 LH:181
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/diagnostics/mod.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/diagnostics/mod.rs
 FN:179,_RNvMs0_NtCs6BFVBPdMni0_14aegis_compiler11diagnosticsNtB5_14DiagnosticSink10has_errors
 FN:199,_RNvMs0_NtCs6BFVBPdMni0_14aegis_compiler11diagnosticsNtB5_14DiagnosticSink11diagnostics
 FN:185,_RNvMs0_NtCs6BFVBPdMni0_14aegis_compiler11diagnosticsNtB5_14DiagnosticSink11error_count
@@ -2403,7 +2403,7 @@ BRH:0
 LF:309
 LH:300
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/ir/mod.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/ir/mod.rs
 FN:440,_RNvMs_NtCs6BFVBPdMni0_14aegis_compiler2irNtB4_19StateMachineBuilder13compile_never
 FN:457,_RNvMs_NtCs6BFVBPdMni0_14aegis_compiler2irNtB4_19StateMachineBuilder13compile_until
 FN:322,_RNvMs_NtCs6BFVBPdMni0_14aegis_compiler2irNtB4_19StateMachineBuilder14compile_always
@@ -3046,7 +3046,7 @@ BRH:0
 LF:511
 LH:507
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/lower.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/lower.rs
 FN:319,_RNCNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler5lowerNtB9_8Lowering10lower_rules0_00Bb_
 FN:669,_RNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler5lowerNtB7_8Lowering10lower_expr0B9_
 FN:745,_RNCNvMs0_NtCs6BFVBPdMni0_14aegis_compiler5lowerNtB7_8Lowering10lower_exprs0_0B9_
@@ -4065,7 +4065,7 @@ BRH:0
 LF:826
 LH:684
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/main.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/main.rs
 FN:1,_RNvCs4GoE6sMTXS_6aegisc4main
 FN:1,_RNvCslGjZQQUxSay_6aegisc4main
 FNDA:0,_RNvCs4GoE6sMTXS_6aegisc4main
@@ -4081,7 +4081,7 @@ BRH:0
 LF:4
 LH:0
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/parser.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/parser.rs
 FN:1538,_RNvNtCs6BFVBPdMni0_14aegis_compiler6parser12build_lambda
 FN:176,_RNvNtCs6BFVBPdMni0_14aegis_compiler6parser12non_kw_inner
 FN:40,_RNvNtCs6BFVBPdMni0_14aegis_compiler6parser12parse_source
@@ -5928,7 +5928,7 @@ BRH:0
 LF:1367
 LH:1181
 end_of_record
-SF:/home/scott/Projects/AgentProof/aegis-compiler/src/types/mod.rs
+SF:/home/scott/Projects/AutomaGuard/aegis-compiler/src/types/mod.rs
 FN:64,_RNvMNtCs6BFVBPdMni0_14aegis_compiler5typesNtB2_2Ty10is_numeric
 FN:79,_RNvMNtCs6BFVBPdMni0_14aegis_compiler5typesNtB2_2Ty11is_duration
 FN:92,_RNvMNtCs6BFVBPdMni0_14aegis_compiler5typesNtB2_2Ty12element_type

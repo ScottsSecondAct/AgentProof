@@ -4,7 +4,7 @@ The paper is written and the name search completed (network tools needed approva
   ---
   Paper
 
-  Written to /home/scott/Projects/AgentProof/paper/agentproof.tex — formatted for ACM SIGCONF (the standard for USENIX Security, CCS, Oakland). It includes:
+  Written to /home/scott/Projects/AutomaGuard/paper/automaguard.tex — formatted for ACM SIGCONF (the standard for USENIX Security, CCS, Oakland). It includes:
 
   - Abstract, Introduction, Motivation/Threat Model
   - Full Aegis language description with syntax examples and temporal operator table
