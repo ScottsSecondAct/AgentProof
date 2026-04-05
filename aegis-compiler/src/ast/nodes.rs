@@ -38,11 +38,11 @@ pub struct ImportDecl {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImportKind {
-    /// `import agentproof.stdlib.pii as pii`
+    /// `import automaguard.stdlib.pii as pii`
     Module { alias: Option<Ident> },
-    /// `from agentproof.stdlib import network, compliance`
+    /// `from automaguard.stdlib import network, compliance`
     Names(Vec<ImportTarget>),
-    /// `from agentproof.stdlib import *`
+    /// `from automaguard.stdlib import *`
     Glob,
 }
 
@@ -564,10 +564,10 @@ mod qualified_name_tests {
     #[test]
     fn to_string_multiple_segments_joined_by_dot() {
         let name = QualifiedName {
-            segments: vec![ident("agentproof"), ident("stdlib"), ident("pii")],
+            segments: vec![ident("automaguard"), ident("stdlib"), ident("pii")],
             span: Span::DUMMY,
         };
-        assert_eq!(name.to_string(), "agentproof.stdlib.pii");
+        assert_eq!(name.to_string(), "automaguard.stdlib.pii");
     }
 }
 

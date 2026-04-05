@@ -2,7 +2,7 @@
 name = "aegis-runtime"
 version = "0.1.0"
 edition = "2021"
-description = "Runtime verifier for Aegis policies (AgentProof)"
+description = "Runtime verifier for Aegis policies (AutomaGuard)"
 license = "Apache-2.0"
 
 [dependencies]

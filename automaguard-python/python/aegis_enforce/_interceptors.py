@@ -1,5 +1,5 @@
 """
-Framework-specific interceptors for AgentProof.
+Framework-specific interceptors for AutomaGuard.
 
 Provides ready-made integrations for:
 - LangChain (via callback handler)
@@ -17,7 +17,7 @@ from typing import Any, Callable, Optional, Union
 from aegis_enforce._engine import PolicyEngine, PolicyResult
 from aegis_enforce._enforce import EnforcementError
 
-logger = logging.getLogger("agentproof")
+logger = logging.getLogger("automaguard")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -25,14 +25,14 @@ logger = logging.getLogger("agentproof")
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class AgentProofCallbackHandler:
+class AutomaGuardCallbackHandler:
     """
-    LangChain callback handler that enforces AgentProof policies.
+    LangChain callback handler that enforces Aegis policies via AutomaGuard.
 
     Usage:
-        from agentproof import AgentProofCallbackHandler
+        from aegis_enforce import AutomaGuardCallbackHandler
 
-        handler = AgentProofCallbackHandler(policy="guard.aegisc")
+        handler = AutomaGuardCallbackHandler(policy="guard.aegisc")
         agent = create_react_agent(llm, tools, callbacks=[handler])
 
         # The agent now enforces the policy on every tool invocation.
@@ -80,14 +80,14 @@ class AgentProofCallbackHandler:
                 raise EnforcementError(result)
             elif self.on_deny == "log":
                 logger.warning(
-                    "AgentProof DENY: tool=%s reason=%s",
+                    "AutomaGuard DENY: tool=%s reason=%s",
                     tool_name,
                     result.reason,
                 )
 
         if result.verdict == "audit":
             logger.info(
-                "AgentProof AUDIT: tool=%s reason=%s",
+                "AutomaGuard AUDIT: tool=%s reason=%s",
                 tool_name,
                 result.reason or "audited",
             )
@@ -98,7 +98,7 @@ class AgentProofCallbackHandler:
 
     def on_tool_error(self, error: BaseException, **kwargs: Any) -> None:
         """Called when a tool execution fails."""
-        logger.error("AgentProof: tool execution error: %s", error)
+        logger.error("AutomaGuard: tool execution error: %s", error)
 
     @property
     def results(self) -> list[PolicyResult]:
@@ -133,7 +133,7 @@ def intercept_openai(
     intercepts when your code is about to execute the tool call.
 
     Usage:
-        from agentproof import intercept_openai, PolicyEngine
+        from aegis_enforce import intercept_openai, PolicyEngine
 
         engine = PolicyEngine.from_file("guard.aegisc")
         safe_client = intercept_openai(client, engine)
@@ -144,7 +144,7 @@ def intercept_openai(
             result = execute_tool(tool_call)
     """
     # This is an alias for enforce() with explicit engine
-    from agentproof._enforce import _wrap_openai
+    from aegis_enforce._enforce import _wrap_openai
     return _wrap_openai(client, engine, on_deny, None, None)
 
 
@@ -159,7 +159,7 @@ def intercept_tool_call(
     on_deny: str = "raise",
 ) -> Callable:
     """
-    Decorator that enforces a policy on a function used as a tool.
+    Decorator that enforces an Aegis policy on a function used as a tool.
 
     Usage:
         engine = PolicyEngine.from_file("guard.aegisc")
@@ -192,7 +192,7 @@ def intercept_tool_call(
                     raise EnforcementError(result)
                 elif on_deny == "log":
                     logger.warning(
-                        "AgentProof DENY: %s — %s",
+                        "AutomaGuard DENY: %s — %s",
                         name,
                         result.reason,
                     )
@@ -202,13 +202,13 @@ def intercept_tool_call(
                     raise EnforcementError(result)
 
             if result.verdict == "audit":
-                logger.info("AgentProof AUDIT: %s", name)
+                logger.info("AutomaGuard AUDIT: %s", name)
 
             return fn(*args, **kwargs)
 
         # Attach metadata for introspection
-        wrapper._agentproof_engine = engine
-        wrapper._agentproof_tool_name = name
+        wrapper._automaguard_engine = engine
+        wrapper._automaguard_tool_name = name
         return wrapper
 
     return decorator

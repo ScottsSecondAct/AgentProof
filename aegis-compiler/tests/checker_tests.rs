@@ -1726,7 +1726,7 @@ fn policy_level_function_callable_from_rule_no_errors() {
 fn module_import_no_errors() {
     // Import resolution is a future pass; the checker accepts imports structurally
     let prog = program(vec![
-        import_module("agentproof.stdlib.pii"),
+        import_module("automaguard.stdlib.pii"),
         simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
     ]);
     assert_no_errors(&check(&prog));
@@ -1735,7 +1735,7 @@ fn module_import_no_errors() {
 #[test]
 fn named_import_no_errors() {
     let prog = program(vec![
-        import_names("agentproof.stdlib", vec!["network", "compliance"]),
+        import_names("automaguard.stdlib", vec!["network", "compliance"]),
         simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
     ]);
     assert_no_errors(&check(&prog));
@@ -1745,7 +1745,7 @@ fn named_import_no_errors() {
 fn import_with_policy_coexist_no_errors() {
     // Imports and policies in the same file — no interference
     let prog = program(vec![
-        import_module("agentproof.stdlib"),
+        import_module("automaguard.stdlib"),
         type_decl("Endpoint", vec![("url", prim(PrimitiveType::String))]),
         simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
     ]);

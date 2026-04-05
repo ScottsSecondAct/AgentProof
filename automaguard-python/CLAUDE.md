@@ -1,13 +1,13 @@
-# agentproof-python
+# automaguard-python
 
-The Python SDK for AgentProof. A thin Python layer over a Rust native extension (pyo3). Provides drop-in enforcement for OpenAI, LangChain, and raw tool-calling agents.
+The Python SDK for AutomaGuard. A thin Python layer over a Rust native extension (pyo3). Provides drop-in enforcement for OpenAI, LangChain, and raw tool-calling agents.
 
 ## User-Facing API
 
 The entire public API fits in three lines:
 
 ```python
-from agentproof import enforce
+from aegis_enforce import enforce
 safe_client = enforce(client, policy="guard.aegisc")
 # Every tool call is now policy-enforced.
 ```
@@ -17,13 +17,13 @@ That simplicity is intentional and load-bearing. Don't complicate the surface AP
 ## Project Structure
 
 ```
-agentproof-python/
+automaguard-python/
 ├── Cargo.toml              # Rust crate config (pyo3 + maturin)
 ├── pyproject.toml           # Python package config (maturin build backend)
 ├── src/
 │   └── lib.rs               # pyo3 native extension — Rust ↔ Python bridge
 └── python/
-    └── agentproof/
+    └── aegis_enforce/
         ├── __init__.py       # Public API re-exports
         ├── engine.py         # PolicyEngine Python wrapper
         ├── integrations/
@@ -36,7 +36,7 @@ agentproof-python/
 
 - **The Python layer is a skin, not a brain.** All policy evaluation, state machine advancement, and expression evaluation happen in Rust. Python code handles framework-specific interception (wrapping OpenAI's `client.chat.completions.create`, hooking LangChain callbacks) and converts framework objects to `Event` dicts that cross the pyo3 boundary.
 - **No policy logic in Python.** If you're writing an `if` statement in Python that makes a policy decision, it belongs in Rust.
-- **Framework integrations are adapters.** Each file in `integrations/` translates one framework's tool-calling convention into AgentProof `Event` objects. They should be small (<200 lines each) and framework-version-aware.
+- **Framework integrations are adapters.** Each file in `integrations/` translates one framework's tool-calling convention into AutomaGuard `Event` objects. They should be small (<200 lines each) and framework-version-aware.
 - **Fail closed.** If the Rust engine returns an error or the pyo3 bridge fails, the default behavior is to deny the action, not allow it. This is a security product.
 
 ## Build System
@@ -61,4 +61,4 @@ agentproof-python/
 ## Versioning
 
 - The Python package version tracks the Rust crate version.
-- The compiled extension includes the runtime version in its metadata — `agentproof.__version__` and `agentproof.__runtime_version__` should both be accessible.
+- The compiled extension includes the runtime version in its metadata — `aegis_enforce.__version__` and `aegis_enforce.__runtime_version__` should both be accessible.

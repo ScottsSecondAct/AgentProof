@@ -25,7 +25,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "agentproof-python"
+name = "autocfg"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
+
+[[package]]
+name = "automaguard-python"
 version = "0.1.0"
 dependencies = [
  "aegis-compiler",
@@ -34,12 +40,6 @@ dependencies = [
  "serde_json",
  "smol_str",
 ]
-
-[[package]]
-name = "autocfg"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "block-buffer"

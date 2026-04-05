@@ -39,7 +39,7 @@ The runtime verifier. Loads compiled `.aegisc` policies, intercepts agent events
 - When modifying the expression evaluator (`eval/`), benchmark before and after. Use `cargo bench` with the runtime benchmark suite.
 - State machine transitions must be deterministic given the same event sequence. If you're debugging a state machine issue, enable the `trace` feature flag for step-by-step transition logging.
 - The `AuditEntry` struct is append-only by design. Adding fields is fine; removing or renaming fields is a breaking change for the dashboard.
-- `Event` construction happens in the Python SDK (via pyo3), not here. If you need to change the `Event` schema, coordinate with `agentproof-python/`.
+- `Event` construction happens in the Python SDK (via pyo3), not here. If you need to change the `Event` schema, coordinate with `automaguard-python/`.
 
 ## Testing
 

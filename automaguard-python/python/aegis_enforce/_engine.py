@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 try:
-    from aegis_enforce._agentproof_core import PolicyEngine as _NativeEngine
+    from aegis_enforce._automaguard_core import PolicyEngine as _NativeEngine
 
     _NATIVE_AVAILABLE = True
 except ImportError:
@@ -72,7 +72,7 @@ class PolicyResult:
 
 class PolicyEngine:
     """
-    The AgentProof policy engine.
+    The AutomaGuard policy engine.
 
     Loads a compiled .aegisc policy and evaluates agent events against it.
     Uses the native Rust engine when available, falls back to pure Python.

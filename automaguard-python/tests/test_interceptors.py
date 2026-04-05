@@ -1,4 +1,4 @@
-"""Tests for AgentProofCallbackHandler and intercept_tool_call."""
+"""Tests for AutomaGuardCallbackHandler and intercept_tool_call."""
 
 import logging
 from typing import Any
@@ -9,37 +9,37 @@ import pytest
 from aegis_enforce._engine import PolicyEngine, PolicyResult
 from aegis_enforce._enforce import EnforcementError
 from aegis_enforce._interceptors import (
-    AgentProofCallbackHandler,
+    AutomaGuardCallbackHandler,
     intercept_tool_call,
 )
 from tests.conftest import make_mock_engine
 
 
-# ── AgentProofCallbackHandler construction ────────────────────────────────────
+# ── AutomaGuardCallbackHandler construction ────────────────────────────────────
 
 
 class TestCallbackHandlerConstruction:
     def test_accepts_policy_engine(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         assert handler.engine is engine
 
     def test_raises_for_invalid_policy_type(self):
         with pytest.raises(TypeError):
-            AgentProofCallbackHandler(policy=42)  # type: ignore[arg-type]
+            AutomaGuardCallbackHandler(policy=42)  # type: ignore[arg-type]
 
     def test_raises_for_missing_file(self, tmp_path):
         with pytest.raises(FileNotFoundError):
-            AgentProofCallbackHandler(policy=tmp_path / "missing.aegisc")
+            AutomaGuardCallbackHandler(policy=tmp_path / "missing.aegisc")
 
     def test_default_on_deny_is_raise(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         assert handler.on_deny == "raise"
 
     def test_on_deny_configurable(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine, on_deny="log")
+        handler = AutomaGuardCallbackHandler(policy=engine, on_deny="log")
         assert handler.on_deny == "log"
 
 
@@ -49,20 +49,20 @@ class TestCallbackHandlerConstruction:
 class TestCallbackHandlerOnToolStart:
     def test_allow_does_not_raise(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "search"}, '{"query": "hello"}')
         # Must not raise
 
     def test_allow_records_result(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "search"}, "q")
         assert handler.event_count == 1
         assert handler.deny_count == 0
 
     def test_evaluate_called_with_tool_name_and_args(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "db_query"}, '{"sql": "SELECT 1"}')
         fields = engine.evaluate.call_args[0][1]
         assert fields["tool"] == "db_query"
@@ -70,7 +70,7 @@ class TestCallbackHandlerOnToolStart:
 
     def test_description_included_in_fields(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start(
             {"name": "tool", "description": "Does things"},
             "input",
@@ -80,7 +80,7 @@ class TestCallbackHandlerOnToolStart:
 
     def test_unknown_tool_name(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({}, "input")
         fields = engine.evaluate.call_args[0][1]
         assert fields["tool"] == "unknown"
@@ -92,26 +92,26 @@ class TestCallbackHandlerOnToolStart:
 class TestCallbackHandlerDeny:
     def test_deny_raises_with_default_on_deny(self):
         engine = make_mock_engine("deny", reason="blocked")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         with pytest.raises(EnforcementError):
             handler.on_tool_start({"name": "exec"}, "cmd")
 
     def test_deny_log_does_not_raise(self, caplog):
         engine = make_mock_engine("deny", reason="blocked")
-        handler = AgentProofCallbackHandler(policy=engine, on_deny="log")
-        with caplog.at_level(logging.WARNING, logger="agentproof"):
+        handler = AutomaGuardCallbackHandler(policy=engine, on_deny="log")
+        with caplog.at_level(logging.WARNING, logger="automaguard"):
             handler.on_tool_start({"name": "exec"}, "cmd")
         assert "DENY" in caplog.text
 
     def test_deny_increments_deny_count(self):
         engine = make_mock_engine("deny", reason="blocked")
-        handler = AgentProofCallbackHandler(policy=engine, on_deny="log")
+        handler = AutomaGuardCallbackHandler(policy=engine, on_deny="log")
         handler.on_tool_start({"name": "exec"}, "cmd")
         assert handler.deny_count == 1
 
     def test_multiple_events_tracked(self):
         allow_engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=allow_engine)
+        handler = AutomaGuardCallbackHandler(policy=allow_engine)
         for _ in range(3):
             handler.on_tool_start({"name": "tool"}, "x")
         assert handler.event_count == 3
@@ -124,14 +124,14 @@ class TestCallbackHandlerDeny:
 class TestCallbackHandlerAudit:
     def test_audit_does_not_raise(self, caplog):
         engine = make_mock_engine("audit", reason="logged")
-        handler = AgentProofCallbackHandler(policy=engine)
-        with caplog.at_level(logging.INFO, logger="agentproof"):
+        handler = AutomaGuardCallbackHandler(policy=engine)
+        with caplog.at_level(logging.INFO, logger="automaguard"):
             handler.on_tool_start({"name": "search"}, "q")
         assert "AUDIT" in caplog.text
 
     def test_audit_not_counted_as_deny(self):
         engine = make_mock_engine("audit")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "search"}, "q")
         assert handler.deny_count == 0
 
@@ -142,19 +142,19 @@ class TestCallbackHandlerAudit:
 class TestCallbackHandlerLifecycle:
     def test_on_tool_end_is_noop(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_end("result")  # must not raise
 
     def test_on_tool_error_logs(self, caplog):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
-        with caplog.at_level(logging.ERROR, logger="agentproof"):
+        handler = AutomaGuardCallbackHandler(policy=engine)
+        with caplog.at_level(logging.ERROR, logger="automaguard"):
             handler.on_tool_error(RuntimeError("boom"))
         assert "boom" in caplog.text
 
     def test_results_returns_copy(self):
         engine = make_mock_engine("allow")
-        handler = AgentProofCallbackHandler(policy=engine)
+        handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "t"}, "x")
         results = handler.results
         results.clear()
@@ -238,8 +238,8 @@ class TestInterceptToolCall:
         def my_fn():
             pass
 
-        assert my_fn._agentproof_engine is engine
-        assert my_fn._agentproof_tool_name == "my_fn"
+        assert my_fn._automaguard_engine is engine
+        assert my_fn._automaguard_tool_name == "my_fn"
 
     def test_wraps_preserves_function_name(self):
         engine = make_mock_engine("allow")
@@ -257,7 +257,7 @@ class TestInterceptToolCall:
         def tool():
             return "result"
 
-        with caplog.at_level(logging.INFO, logger="agentproof"):
+        with caplog.at_level(logging.INFO, logger="automaguard"):
             result = tool()
         assert result == "result"
         assert "AUDIT" in caplog.text

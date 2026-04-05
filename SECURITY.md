@@ -12,7 +12,7 @@
 
 Instead, report vulnerabilities privately using one of the following methods:
 
-1. **GitHub Private Vulnerability Reporting:** Use the [Security Advisories](https://github.com/ScottsSecondAct/AgentProof/security/advisories/new) page to submit a private report directly on GitHub.
+1. **GitHub Private Vulnerability Reporting:** Use the [Security Advisories](https://github.com/ScottsSecondAct/AutomaGuard/security/advisories/new) page to submit a private report directly on GitHub.
 2. **Email:** Send details to **scott@ScottsSecondAct.com**.
 
 ### What to Include
@@ -31,7 +31,7 @@ Instead, report vulnerabilities privately using one of the following methods:
 
 ### Scope
 
-AgentProof is a policy compilation and enforcement engine for AI agents. Relevant security concerns include:
+AutomaGuard is a policy compilation and enforcement engine for AI agents. Relevant security concerns include:
 
 - **Bytecode parsing** — malicious `.aegisc` files that trigger unexpected behavior in the runtime deserializer
 - **Policy evaluation** — crafted event payloads that cause incorrect verdicts (false allows or false denies)

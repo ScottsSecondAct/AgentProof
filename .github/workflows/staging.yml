@@ -47,10 +47,10 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux || 'off' }}
           args: --release --out dist -i python3.11
-          working-directory: agentproof-python
+          working-directory: automaguard-python
 
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.platform }}
-          path: agentproof-python/dist/*.whl
+          path: automaguard-python/dist/*.whl
           if-no-files-found: error

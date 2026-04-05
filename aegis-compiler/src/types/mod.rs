@@ -323,7 +323,7 @@ impl TypeEnv {
 /// if the event name is not in the built-in registry (falling back to the
 /// open/dynamic struct at the global scope).
 ///
-/// The schemas here are the canonical field shapes for the core AgentProof
+/// The schemas here are the canonical field shapes for the core AutomaGuard
 /// event types.  They allow the type checker to catch unknown field access
 /// (E0108) and type mismatches (E0106) for well-known events at compile time.
 pub fn event_schema(name: &str) -> Option<Ty> {

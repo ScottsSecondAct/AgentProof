@@ -682,10 +682,10 @@ fn function_declaration() {
 
 #[test]
 fn simple_import() {
-    let prog = parse_ok("import agentproof.stdlib.pii");
+    let prog = parse_ok("import automaguard.stdlib.pii");
     match &prog.declarations[0].node {
         Declaration::Import(i) => {
-            assert_eq!(i.path.to_string(), "agentproof.stdlib.pii");
+            assert_eq!(i.path.to_string(), "automaguard.stdlib.pii");
             match &i.kind {
                 ImportKind::Module { alias } => assert!(alias.is_none()),
                 _ => panic!("expected Module import"),
@@ -697,7 +697,7 @@ fn simple_import() {
 
 #[test]
 fn import_with_alias() {
-    let prog = parse_ok("import agentproof.stdlib.pii as pii");
+    let prog = parse_ok("import automaguard.stdlib.pii as pii");
     match &prog.declarations[0].node {
         Declaration::Import(i) => match &i.kind {
             ImportKind::Module { alias } => {
@@ -711,7 +711,7 @@ fn import_with_alias() {
 
 #[test]
 fn from_import_names() {
-    let prog = parse_ok("from agentproof.stdlib import network, compliance");
+    let prog = parse_ok("from automaguard.stdlib import network, compliance");
     match &prog.declarations[0].node {
         Declaration::Import(i) => match &i.kind {
             ImportKind::Names(targets) => {
@@ -727,7 +727,7 @@ fn from_import_names() {
 
 #[test]
 fn glob_import() {
-    let prog = parse_ok("from agentproof.stdlib import *");
+    let prog = parse_ok("from automaguard.stdlib import *");
     match &prog.declarations[0].node {
         Declaration::Import(i) => {
             assert!(matches!(i.kind, ImportKind::Glob));

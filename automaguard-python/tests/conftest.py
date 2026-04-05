@@ -1,5 +1,5 @@
 """
-Shared fixtures for agentproof-python tests.
+Shared fixtures for automaguard-python tests.
 
 All tests run against the pure-Python fallback (no native Rust extension
 required).  Integration tests that require the compiled .aegisc format

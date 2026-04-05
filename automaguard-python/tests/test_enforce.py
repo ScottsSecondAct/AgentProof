@@ -27,7 +27,7 @@ class TestEnforcementError:
     def test_message_uses_fallback_when_no_reason(self):
         result = PolicyResult(verdict="deny")
         err = EnforcementError(result)
-        assert "Policy denied" in str(err) or "AgentProof" in str(err)
+        assert "Policy denied" in str(err) or "AutomaGuard" in str(err)
 
     def test_result_attribute_preserved(self):
         result = PolicyResult(verdict="deny", reason="blocked")
@@ -55,7 +55,7 @@ class TestHandleResult:
 
     def test_deny_log_does_not_raise(self, caplog):
         result = PolicyResult(verdict="deny", reason="blocked")
-        with caplog.at_level(logging.WARNING, logger="agentproof"):
+        with caplog.at_level(logging.WARNING, logger="automaguard"):
             _handle_result(result, "log", None, None, {"tool": "exec"})
         assert "DENY" in caplog.text
 
@@ -71,14 +71,14 @@ class TestHandleResult:
     def test_audit_calls_on_audit_callback(self, caplog):
         result = PolicyResult(verdict="audit", reason="logged")
         cb = MagicMock()
-        with caplog.at_level(logging.INFO, logger="agentproof"):
+        with caplog.at_level(logging.INFO, logger="automaguard"):
             _handle_result(result, "raise", cb, None, {"tool": "search"})
         cb.assert_called_once_with(result)
         assert "AUDIT" in caplog.text
 
     def test_audit_no_callback_is_noop(self, caplog):
         result = PolicyResult(verdict="audit", reason="logged")
-        with caplog.at_level(logging.INFO, logger="agentproof"):
+        with caplog.at_level(logging.INFO, logger="automaguard"):
             _handle_result(result, "raise", None, None, {"tool": "search"})
         assert "AUDIT" in caplog.text
 
@@ -86,7 +86,7 @@ class TestHandleResult:
         result = PolicyResult(verdict="redact", reason="sanitised")
         fields = {"tool": "db_read", "data": "secret"}
         cb = MagicMock()
-        with caplog.at_level(logging.INFO, logger="agentproof"):
+        with caplog.at_level(logging.INFO, logger="automaguard"):
             _handle_result(result, "raise", None, cb, fields)
         cb.assert_called_once_with(fields, result)
         assert "REDACT" in caplog.text

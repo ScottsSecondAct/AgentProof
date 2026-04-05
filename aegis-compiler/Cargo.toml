@@ -2,7 +2,7 @@
 name = "aegis-compiler"
 version = "0.1.0"
 edition = "2021"
-description = "Compiler frontend for the Aegis policy language (AgentProof)"
+description = "Compiler frontend for the Aegis policy language (AutomaGuard)"
 license = "Apache-2.0"
 
 [[bin]]

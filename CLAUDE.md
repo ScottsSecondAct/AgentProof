@@ -1,6 +1,6 @@
-# AgentProof
+# AutomaGuard
 
-AgentProof is a formal verification and policy enforcement engine for production AI agents. It provides mathematical guarantees — not best-effort checks — that agents comply with safety and behavioral constraints.
+AutomaGuard is a formal verification and policy enforcement engine for production AI agents. It provides mathematical guarantees — not best-effort checks — that agents comply with safety and behavioral constraints.
 
 ## What This Is
 
@@ -15,14 +15,14 @@ The dashboard (Next.js) and TypeScript SDK are planned but not yet built.
 ## Project Layout
 
 ```
-agentproof/
+AutomaGuard/
 ├── CLAUDE.md                  # You are here
 ├── aegis-compiler/            # Rust: parser, type checker, IR lowering, bytecode
 │   ├── src/aegis.pest         # pest PEG grammar
 │   └── CLAUDE.md
 ├── aegis-runtime/             # Rust: event evaluation, state machines, rate limits
 │   └── CLAUDE.md
-├── agentproof-python/         # Rust (pyo3) + Python: SDK and framework integrations
+├── automaguard-python/         # Rust (pyo3) + Python: SDK and framework integrations
 │   └── CLAUDE.md
 ├── examples/                  # Example .aegis policy files
 └── dashboard/                 # (planned) Next.js + Tailwind compliance UI
@@ -66,7 +66,7 @@ agentproof/
 
 ## Key Design Decisions
 
-- **Compiled, not interpreted.** Policies compile to state machines. The runtime does not parse or evaluate policy source at request time. This is what makes <10ms latency possible and what differentiates AgentProof from regex/validator approaches.
+- **Compiled, not interpreted.** Policies compile to state machines. The runtime does not parse or evaluate policy source at request time. This is what makes <10ms latency possible and what differentiates AutomaGuard from regex/validator approaches.
 - **Temporal logic is the moat.** `always`, `eventually`, `until`, `never` compile to Büchi-like automata. This provides mathematical guarantees that sequence-level constraints hold, not just per-event checks.
 - **The verifier is the product.** The compiler is a means to an end. Optimize for runtime performance and correctness above compiler elegance.
 - **Append-only audit trail.** Every verdict is logged. Nothing is mutable after the fact. This is a compliance requirement, not a nice-to-have.

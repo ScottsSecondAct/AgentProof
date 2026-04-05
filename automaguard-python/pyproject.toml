@@ -31,7 +31,7 @@ dev = ["pytest", "pytest-asyncio", "openai", "langchain-core"]
 
 [tool.maturin]
 python-source = "python"
-module-name = "aegis_enforce._agentproof_core"
+module-name = "aegis_enforce._automaguard_core"
 features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]

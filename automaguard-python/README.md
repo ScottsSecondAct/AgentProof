@@ -1,13 +1,13 @@
-# AgentProof
+# AutomaGuard
 
 **Runtime policy enforcement for AI agents.** One line to protect your users.
 
-AgentProof ensures your AI agents never take unauthorized actions. Write policies in the [Aegis language](https://github.com/ScottsSecondAct/agentproof), compile them, and enforce them at runtime with <10ms latency.
+AutomaGuard ensures your AI agents never take unauthorized actions. Write policies in the [Aegis language](https://github.com/ScottsSecondAct/AutomaGuard), compile them, and enforce them at runtime with <10ms latency.
 
 ## Install
 
 ```bash
-pip install agentproof
+pip install aegis-enforce
 ```
 
 Requires Python 3.9+. The package includes a pre-compiled Rust native extension — no Rust toolchain needed for installation.
@@ -17,13 +17,13 @@ Requires Python 3.9+. The package includes a pre-compiled Rust native extension 
 ### OpenAI
 
 ```python
-from agentproof import enforce
+from aegis_enforce import enforce
 import openai
 
 client = openai.OpenAI()
 safe_client = enforce(client, policy="guard.aegisc")
 
-# Use exactly as before — AgentProof intercepts every tool call
+# Use exactly as before — AutomaGuard intercepts every tool call
 response = safe_client.chat.completions.create(
     model="gpt-4",
     messages=[{"role": "user", "content": "Check the weather"}],
@@ -34,15 +34,15 @@ response = safe_client.chat.completions.create(
 If the agent tries to call an unauthorized tool:
 
 ```
-agentproof.EnforcementError: AgentProof: External HTTP calls are not permitted
+aegis_enforce.EnforcementError: AutomaGuard: External HTTP calls are not permitted
 ```
 
 ### LangChain
 
 ```python
-from agentproof import AgentProofCallbackHandler
+from aegis_enforce import AutomaGuardCallbackHandler
 
-handler = AgentProofCallbackHandler(policy="guard.aegisc")
+handler = AutomaGuardCallbackHandler(policy="guard.aegisc")
 agent = create_react_agent(llm, tools, callbacks=[handler])
 ```
 
@@ -51,7 +51,7 @@ agent = create_react_agent(llm, tools, callbacks=[handler])
 For custom frameworks or advanced use cases:
 
 ```python
-from agentproof import PolicyEngine
+from aegis_enforce import PolicyEngine
 
 engine = PolicyEngine.from_file("guard.aegisc")
 
@@ -71,7 +71,7 @@ print(result.eval_time_us) # 42 (microseconds)
 Wrap individual tool functions:
 
 ```python
-from agentproof import intercept_tool_call
+from aegis_enforce import intercept_tool_call
 
 engine = PolicyEngine.from_file("guard.aegisc")
 
@@ -115,13 +115,13 @@ The compiler transforms temporal invariants (`always`, `eventually`, `until`, `n
 ## How It Works
 
 ```
-Agent → tool call → AgentProof intercepts → Policy engine evaluates → Verdict
+Agent → tool call → AutomaGuard intercepts → Policy engine evaluates → Verdict
                                                                         ↓
                                                               allow / deny / audit / redact
 ```
 
 1. Your agent decides to call a tool
-2. AgentProof intercepts the call and builds an event
+2. AutomaGuard intercepts the call and builds an event
 3. The compiled policy is evaluated against the event (<10ms)
 4. A verdict is returned: allow, deny (with reason), audit (log but allow), or redact (allow with sanitized fields)
 5. The decision is logged to an immutable audit trail
@@ -141,15 +141,15 @@ safe_client = enforce(client, policy="guard.aegisc", on_deny="block")
 safe_client = enforce(client, policy="guard.aegisc", on_deny="log")
 ```
 
-Monitor mode is useful for deploying AgentProof alongside an existing agent to see what *would* be blocked before turning on enforcement.
+Monitor mode is useful for deploying AutomaGuard alongside an existing agent to see what *would* be blocked before turning on enforcement.
 
 ## Dependencies
 
 The base package has **zero Python dependencies** beyond the compiled Rust extension. Framework integrations are optional:
 
 ```bash
-pip install agentproof[openai]     # adds openai>=1.0
-pip install agentproof[langchain]  # adds langchain-core>=0.1
+pip install aegis-enforce[openai]     # adds openai>=1.0
+pip install aegis-enforce[langchain]  # adds langchain-core>=0.1
 ```
 
 ## Fail-Closed Design
@@ -165,16 +165,16 @@ If you want to build the native extension yourself:
 pip install maturin
 
 # Build in development mode
-cd agentproof-python
+cd automaguard-python
 maturin develop
 
 # Run tests
 pytest
 ```
 
-## Part of AgentProof
+## Part of AutomaGuard
 
-This SDK is the Python interface to AgentProof's [compiler](https://github.com/ScottsSecondAct/agentproof/tree/main/aegis-compiler) and [runtime verifier](https://github.com/ScottsSecondAct/agentproof/tree/main/aegis-runtime). The full project, including the Aegis language specification, is at [github.com/ScottsSecondAct/agentproof](https://github.com/ScottsSecondAct/agentproof).
+This SDK is the Python interface to AutomaGuard's [compiler](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-compiler) and [runtime verifier](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-runtime). The full project, including the Aegis language specification, is at [github.com/ScottsSecondAct/AutomaGuard](https://github.com/ScottsSecondAct/AutomaGuard).
 
 ## License
 

@@ -1,12 +1,12 @@
 [package]
-name = "agentproof-python"
+name = "automaguard-python"
 version = "0.1.0"
 edition = "2021"
-description = "Python bindings for the AgentProof runtime verifier"
+description = "Python bindings for the AutomaGuard runtime verifier"
 license = "Apache-2.0"
 
 [lib]
-name = "_agentproof_core"
+name = "_automaguard_core"
 crate-type = ["cdylib"]
 
 [dependencies]

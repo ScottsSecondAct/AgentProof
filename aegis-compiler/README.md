@@ -1,8 +1,8 @@
 # aegis-compiler
 
-The compiler for the [Aegis policy language](https://github.com/ScottsSecondAct/agentproof). Transforms `.aegis` source files into `.aegisc` bytecode containing compiled state machines, flattened rules, and verification metadata.
+The compiler for the [Aegis policy language](https://github.com/ScottsSecondAct/AutomaGuard). Transforms `.aegis` source files into `.aegisc` bytecode containing compiled state machines, flattened rules, and verification metadata.
 
-This crate is part of [AgentProof](https://github.com/ScottsSecondAct/agentproof) — formally verified policy enforcement for AI agents.
+This crate is part of [AutomaGuard](https://github.com/ScottsSecondAct/AutomaGuard) — formally verified policy enforcement for AI agents.
 
 ## What It Does
 

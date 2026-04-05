@@ -1,10 +1,10 @@
-# AgentProof
+# AutomaGuard
 
-[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![CI](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/ci.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/ci.yml) [![Staging](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/staging.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/staging.yml) [![Release](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AgentProof/actions/workflows/release.yml)
+[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![CI](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/ci.yml) [![Staging](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/staging.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/staging.yml) [![Release](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/release.yml)
 
 **Formally verified policy enforcement for AI agents.**
 
-Current guardrails check what agents *say*. AgentProof checks what agents *do* — and blocks unauthorized actions before they execute, with mathematical proofs that the constraints hold.
+Current guardrails check what agents *say*. AutomaGuard checks what agents *do* — and blocks unauthorized actions before they execute, with mathematical proofs that the constraints hold.
 
 ## The Problem
 
@@ -12,14 +12,14 @@ AI agents are taking real actions: calling APIs, moving money, accessing data, s
 
 A permissions system asks: "Is this single action allowed right now?"
 
-AgentProof asks: "Given every action this agent has taken and might take, can I *prove* that no combination of allowed actions leads to a forbidden state?"
+AutomaGuard asks: "Given every action this agent has taken and might take, can I *prove* that no combination of allowed actions leads to a forbidden state?"
 
 That's the difference between a spell-checker and a type system.
 
 ## Quick Start
 
 ```bash
-pip install agentproof
+pip install aegis-enforce
 ```
 
 Write a policy in the Aegis language:
@@ -55,13 +55,13 @@ aegisc compile guard.aegis -o guard.aegisc
 Enforce it — one line:
 
 ```python
-from agentproof import enforce
+from aegis_enforce import enforce
 import openai
 
 client = openai.OpenAI()
 safe_client = enforce(client, policy="guard.aegisc")
 
-# Use exactly as before — AgentProof intercepts every tool call
+# Use exactly as before — AutomaGuard intercepts every tool call
 response = safe_client.chat.completions.create(
     model="gpt-4",
     messages=[{"role": "user", "content": "Check the weather"}],
@@ -72,24 +72,24 @@ response = safe_client.chat.completions.create(
 If the agent tries something unauthorized:
 
 ```
-agentproof.EnforcementError: AgentProof: External HTTP calls are not permitted
+aegis_enforce.EnforcementError: AutomaGuard: External HTTP calls are not permitted
 ```
 
 ## How It Works
 
-AgentProof sits between your agent and its tools. Every action is evaluated against your compiled policy in <10ms:
+AutomaGuard sits between your agent and its tools. Every action is evaluated against your compiled policy in <10ms:
 
 1. **Agent decides** to call a tool
-2. **AgentProof intercepts** the call and builds an event
+2. **AutomaGuard intercepts** the call and builds an event
 3. **Policy engine evaluates** the event against compiled rules and temporal invariants
 4. **Verdict is returned**: allow, deny, audit, or redact
 5. **Action is taken**: proceed, block, log, or sanitize
 
-The policy engine runs compiled state machines — not regex, not string matching, not validators. When your policy says "the agent must never access external URLs," AgentProof provides a mathematical guarantee, not a best-effort check.
+The policy engine runs compiled state machines — not regex, not string matching, not validators. When your policy says "the agent must never access external URLs," AutomaGuard provides a mathematical guarantee, not a best-effort check.
 
 ## Why Formal Verification
 
-Most guardrail tools validate individual outputs. AgentProof verifies *sequences* of actions against temporal logic specifications (LTL).
+Most guardrail tools validate individual outputs. AutomaGuard verifies *sequences* of actions against temporal logic specifications (LTL).
 
 - `always(φ)` — property φ must hold on every action, forever
 - `eventually(φ) within 5m` — property φ must become true within 5 minutes
@@ -137,11 +137,11 @@ These compile to deterministic state machines at build time. At runtime, the ver
 ## Project Structure
 
 ```
-agentproof/
+AutomaGuard/
 ├── aegis-compiler/      # Rust — parser, type checker, IR lowering, bytecode
 │   └── src/aegis.pest   # pest PEG grammar
 ├── aegis-runtime/       # Rust — event evaluation, state machines, rate limits
-├── agentproof-python/   # Rust (pyo3) + Python — SDK and framework integrations
+├── automaguard-python/   # Rust (pyo3) + Python — SDK and framework integrations
 └── examples/            # Example .aegis policy files
 ```
 
@@ -160,12 +160,12 @@ agentproof/
 cargo build --release
 
 # Python SDK (development mode)
-cd agentproof-python
+cd automaguard-python
 maturin develop
 
 # Run tests
 cargo test
-cd agentproof-python && pytest
+cd automaguard-python && pytest
 ```
 
 ### CLI
@@ -186,7 +186,7 @@ aegisc dump policy.aegisc | jq .
 
 ## Comparison
 
-| Capability | Platform Guardrails | Guardrails AI | AI Security Cos. | **AgentProof** |
+| Capability | Platform Guardrails | Guardrails AI | AI Security Cos. | **AutomaGuard** |
 |---|---|---|---|---|
 | Text output validation | ✓ | ✓ | ✓ | ✓ |
 | PII / toxicity filtering | ✓ | ✓ | ✓ | ✓ |

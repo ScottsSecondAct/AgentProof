@@ -1,6 +1,6 @@
 # aegis-runtime
 
-The runtime verifier for [AgentProof](https://github.com/ScottsSecondAct/agentproof). Loads compiled `.aegisc` policies, intercepts agent events, evaluates rules, advances state machines, enforces rate limits, and returns verdicts — all in under 10 milliseconds.
+The runtime verifier for [AutomaGuard](https://github.com/ScottsSecondAct/AutomaGuard). Loads compiled `.aegisc` policies, intercepts agent events, evaluates rules, advances state machines, enforces rate limits, and returns verdicts — all in under 10 milliseconds.
 
 This is the hot path. If you're looking at this crate, you care about latency.
 
@@ -52,7 +52,7 @@ match result.verdict {
 println!("Evaluation took: {}μs", result.eval_time_us);
 ```
 
-Most users won't use this crate directly — the [Python SDK](../agentproof-python/) wraps it via pyo3. This crate is for Rust-native integrations, custom framework adapters, or embedding the verifier in non-Python environments.
+Most users won't use this crate directly — the [Python SDK](../automaguard-python/) wraps it via pyo3. This crate is for Rust-native integrations, custom framework adapters, or embedding the verifier in non-Python environments.
 
 ## Building
 

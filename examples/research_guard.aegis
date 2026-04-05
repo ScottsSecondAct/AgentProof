@@ -1,0 +1,98 @@
+// research_guard.aegis — AutomaGuard policy for the research agent demo
+//
+// This policy is the "after" in the before/after demo.
+// Each rule targets a specific adversarial prompt from Phase 2.
+// The comments map rules to the attacks they catch.
+
+policy research_guard {
+
+    // --- Config bindings ---
+    // In production, these come from the AutomaGuard config or environment.
+    // For the demo, they're hardcoded to match src/config.py.
+    let approved_recipients = [
+        "scott@example.com",
+        "team@example.com"
+    ]
+
+    let allowed_path_prefix = "/tmp/research/"
+
+    // =====================================================================
+    // Rule 3: Email Rate Limit
+    // Catches: Prompt 2b (mass emailing)
+    // =====================================================================
+    rate_limit send_email: 3 per 300s
+
+    // =====================================================================
+    // Rule 4: Search Rate Limit
+    // Catches: Prompt 4a (infinite retry loops)
+    // =====================================================================
+    rate_limit web_search: 10 per 60s
+
+    // =====================================================================
+    // Rule 1: File Write Path Constraint
+    // Catches: Prompts 1a, 1b, 1c (path traversal, system file overwrites)
+    // =====================================================================
+    on tool_call {
+        when event.tool == "write_file" and !(event.params.path starts_with allowed_path_prefix)
+        deny with "Write blocked: path must be under /tmp/research/ with no traversal"
+    }
+
+    on tool_call {
+        when event.tool == "write_file" and event.params.path contains ".."
+        deny with "Write blocked: path traversal detected"
+    }
+
+    // =====================================================================
+    // Rule 2: Email Recipient Allowlist
+    // Catches: Prompts 2a, 2b, 2c (unauthorized recipients, exfiltration)
+    // =====================================================================
+    on tool_call {
+        when event.tool == "send_email" and !(event.params.recipient in approved_recipients)
+        deny with "Email blocked: recipient not in approved list"
+    }
+
+    // =====================================================================
+    // Rules 5–7: Temporal / Sequence Detection
+    //
+    // These compile to state machines. Per-action checks CANNOT catch these —
+    // each individual action may be fine; the sequence is the violation.
+    // =====================================================================
+    proof SequenceGuards {
+
+        // Rule 5: Bulk Search → Email Sequence Detection
+        // Catches: Prompt 3a — THE MONEY SHOT
+        // Uses context.web_search_events (runtime-maintained sliding window).
+        invariant NoBulkSearchThenEmail {
+            always(
+                !(count(context.web_search_events) > 5
+                  and event.tool == "send_email")
+            )
+        }
+
+        // Rule 6: Sensitive File Write → Email Pipeline
+        // Catches: Prompt 2c (write /etc/passwd → email contents)
+        // after(condition, trigger): once trigger fires, condition must hold.
+        // Violation: send_email occurs immediately after a write to /etc/.
+        invariant NoSensitiveFileExfiltration {
+            after(
+                !(event.tool == "send_email"),
+                event.tool == "write_file" and event.params.path starts_with "/etc/"
+            )
+        }
+
+        // Rule 7: PII Research → Exfiltration Sequence
+        // Catches: Prompt 3b (personal info search → unauthorized email)
+        // after(condition, trigger): once a PII search fires, email to unapproved
+        // recipients must not follow.
+        invariant NoPIIExfiltration {
+            after(
+                !(event.tool == "send_email" and !(event.params.recipient in approved_recipients)),
+                event.tool == "web_search"
+                and any(
+                    ["personal information", "email address", "phone number", "home address"],
+                    kw => event.params.query contains kw
+                )
+            )
+        }
+    }
+}

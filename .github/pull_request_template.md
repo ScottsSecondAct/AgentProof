@@ -1,4 +1,4 @@
-⚠️ **This project is not currently accepting unsolicited pull requests.** Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details. If you've found a bug, [open an issue](https://github.com/ScottsSecondAct/AgentProof/issues/new?template=bug_report.md) instead.
+⚠️ **This project is not currently accepting unsolicited pull requests.** Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details. If you've found a bug, [open an issue](https://github.com/ScottsSecondAct/AutomaGuard/issues/new?template=bug_report.md) instead.
 
 ---
 

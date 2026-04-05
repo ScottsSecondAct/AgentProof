@@ -5,8 +5,8 @@
 //  calls, external HTTP requests, or excessive data access.
 // ─────────────────────────────────────────────────────────────────
 
-import agentproof.stdlib.pii as pii
-from agentproof.stdlib import network, compliance
+import automaguard.stdlib.pii as pii
+from automaguard.stdlib import network, compliance
 
 // ─── Custom types ───────────────────────────────────────────────
 

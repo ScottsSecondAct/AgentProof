@@ -116,7 +116,7 @@ The <10ms p99 guarantee is confirmed with substantial headroom on the primary sc
 
 ---
 
-## agentproof-python — 91 tests, all passing
+## automaguard-python — 91 tests, all passing
 
 ### Python tests (`tests/`, 91 tests)
 
@@ -125,7 +125,7 @@ The <10ms p99 guarantee is confirmed with substantial headroom on the primary sc
 | `tests/test_policy_result.py` | 11 | `PolicyResult` defaults; mutable-default isolation; `allowed`/`denied` properties for all four verdicts; `from_dict()` full dict, empty dict, missing optional fields, unknown keys |
 | `tests/test_engine.py` | 26 | `from_file` (missing file, bad magic, valid file, Path/str/missing name); `from_bytes` (valid, bad magic, empty dict); `from_json` (with/without name); pure-Python fallback always-allow, no-fields, reason text; native engine proxying; event count increment/reset; native count delegation; `status()`/`repr()` with and without native; `set_context`/`set_config` no-native noop and native delegation |
 | `tests/test_enforce.py` | 22 | `EnforcementError` message, fallback reason, result attribute; `_handle_result` for deny (raise/block/log/unknown mode), allow, audit callback, redact callback; `enforce()` invalid type, missing file, accepts engine, non-OpenAI returns `_GenericProxy`; `_GenericProxy` attr passthrough, callable wrapping, allow/deny/log modes, setattr delegation, tool name in fields, kwargs in fields |
-| `tests/test_interceptors.py` | 32 | `AgentProofCallbackHandler` construction (engine, invalid type, missing file, on_deny default/configurable); `on_tool_start` allow/deny/audit with all on_deny modes; event/deny counts; `on_tool_end` noop; `on_tool_error` logs; `results` returns copy; `intercept_tool_call` allow, function-name default, name override, deny raise/log, kwargs fields, metadata attachment, `__name__` preservation, audit passthrough |
+| `tests/test_interceptors.py` | 32 | `AutomaGuardCallbackHandler` construction (engine, invalid type, missing file, on_deny default/configurable); `on_tool_start` allow/deny/audit with all on_deny modes; event/deny counts; `on_tool_end` noop; `on_tool_error` logs; `results` returns copy; `intercept_tool_call` allow, function-name default, name override, deny raise/log, kwargs fields, metadata attachment, `__name__` preservation, audit passthrough |
 
 All tests run against the pure-Python fallback path — no native Rust extension required.
 

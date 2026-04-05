@@ -63,9 +63,9 @@ jobs:
       - name: Build
         run: cargo build
 
-  # ── agentproof-python ─────────────────────────────────────────────────────────
+  # ── automaguard-python ─────────────────────────────────────────────────────────
   python:
-    name: agentproof-python (maturin build)
+    name: automaguard-python (maturin build)
     runs-on: ubuntu-latest
     needs: runtime
     steps:
@@ -79,11 +79,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: agentproof-python
+          workspaces: automaguard-python
 
       - name: Install maturin
         run: pip install maturin
 
       - name: Build
-        working-directory: agentproof-python
+        working-directory: automaguard-python
         run: maturin build

@@ -53,7 +53,7 @@ pub fn cli_main(args: &[String]) -> i32 {
 fn print_usage() {
     eprintln!(
         "\
-aegisc — the Aegis policy compiler (AgentProof)
+aegisc — the Aegis policy compiler (AutomaGuard)
 
 USAGE:
     aegisc <command> [options] <file>

@@ -79,7 +79,7 @@ fn value_to_py(py: Python<'_>, val: &Value) -> PyObject {
 //  PyPolicyEngine — the main Python-facing class
 // ═══════════════════════════════════════════════════════════════════════
 
-/// The AgentProof policy engine.
+/// The AutomaGuard policy engine.
 ///
 /// Load a compiled policy and evaluate agent events against it.
 ///
@@ -310,9 +310,9 @@ fn result_to_py(py: Python<'_>, result: &RustResult) -> PyObject {
 //  Module initialization
 // ═══════════════════════════════════════════════════════════════════════
 
-/// AgentProof native core — Rust-powered policy verification.
+/// AutomaGuard native core — Rust-powered policy verification.
 #[pymodule]
-fn _agentproof_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _automaguard_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPolicyEngine>()?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())

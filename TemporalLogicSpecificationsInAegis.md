@@ -324,7 +324,7 @@ During warmup, the strict rate limit of 10/minute is enforced as an `always` pro
 
 When the Aegis compiler encounters a temporal invariant, it doesn't store the formula for runtime interpretation. It compiles it into a deterministic state machine — a finite automaton with explicit states, transitions, and guards.
 
-This is the performance secret. At runtime, the verifier doesn't evaluate logical formulas. It advances a state machine by one transition per event. That's a table lookup, not a computation. It's why AgentProof can verify policies in under 10 milliseconds.
+This is the performance secret. At runtime, the verifier doesn't evaluate logical formulas. It advances a state machine by one transition per event. That's a table lookup, not a computation. It's why AutomaGuard can verify policies in under 10 milliseconds.
 
 The compilation follows a systematic pattern:
 
@@ -476,11 +476,11 @@ LTL is powerful, but it has boundaries. Understanding them prevents misuse.
 
 **LTL cannot express probabilities.** "The agent should usually respond within 5 seconds" is not an LTL property. LTL deals in absolutes: always, never, eventually. If you need statistical guarantees, you need a different formalism (or rate-limit-based approximations).
 
-**LTL cannot count across unbounded history efficiently.** "The agent has made exactly 17 API calls total" requires tracking a counter over the entire trace. AgentProof handles this through rate limits and quotas (separate from the temporal engine) rather than encoding it as pure LTL.
+**LTL cannot count across unbounded history efficiently.** "The agent has made exactly 17 API calls total" requires tracking a counter over the entire trace. AutomaGuard handles this through rate limits and quotas (separate from the temporal engine) rather than encoding it as pure LTL.
 
 **LTL cannot branch.** LTL reasons about a single linear trace of events. It cannot express "in all possible futures" (that's CTL — Computation Tree Logic). For agent safety, this is rarely a limitation because agents act sequentially: there is one trace, not a branching tree.
 
-**LTL formulas can be expensive to monitor if deeply nested.** AgentProof restricts nesting depth in v1 — `always(eventually(always(φ)))` is rejected by the type checker with a suggestion to decompose into separate invariants. This keeps state machines small and runtime performance predictable.
+**LTL formulas can be expensive to monitor if deeply nested.** AutomaGuard restricts nesting depth in v1 — `always(eventually(always(φ)))` is rejected by the type checker with a suggestion to decompose into separate invariants. This keeps state machines small and runtime performance predictable.
 
 ---
 
@@ -496,4 +496,4 @@ LTL is powerful, but it has boundaries. Understanding them prevents misuse.
 
 The key idea: temporal properties are compiled to state machines at build time and evaluated as table lookups at runtime. No interpretation. No regex. No ambiguity. Mathematical guarantees that the constraint holds, or a precise report of where and when it was violated.
 
-This is what separates AgentProof from guardrail tools that check individual outputs. Those tools are spell-checkers. AgentProof is a type system — it reasons about the *structure* of behavior, not just the surface of individual actions.
+This is what separates AutomaGuard from guardrail tools that check individual outputs. Those tools are spell-checkers. AutomaGuard is a type system — it reasons about the *structure* of behavior, not just the surface of individual actions.

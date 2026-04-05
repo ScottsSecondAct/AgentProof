@@ -23,7 +23,7 @@ What you expected to happen.
 - OS: [e.g., Ubuntu 24.04, macOS 15, Windows 11]
 - Rust version: [output of `rustc --version`]
 - Python version (if using the SDK): [e.g., 3.11.4]
-- AgentProof version: [e.g., v0.1.0]
+- AutomaGuard version: [e.g., v0.1.0]
 
 **Additional context**
 Paste any error output, the `.aegis` policy file that triggered the issue (if shareable), or the compiled `.aegisc` bytecode version.

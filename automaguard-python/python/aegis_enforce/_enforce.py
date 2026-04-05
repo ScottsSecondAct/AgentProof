@@ -1,8 +1,8 @@
 """
-enforce() — the one-line API for AgentProof.
+enforce() — the one-line API for AutomaGuard.
 
 Usage:
-    from agentproof import enforce
+    from aegis_enforce import enforce
 
     # Wrap any OpenAI client
     safe_client = enforce(client, policy="guard.aegisc")
@@ -24,16 +24,16 @@ from typing import Any, Callable, Optional, Union
 
 from aegis_enforce._engine import PolicyEngine, PolicyResult
 
-logger = logging.getLogger("agentproof")
+logger = logging.getLogger("automaguard")
 
 
 class EnforcementError(Exception):
-    """Raised when a policy denies an agent action."""
+    """Raised when an Aegis policy denies an agent action."""
 
     def __init__(self, result: PolicyResult):
         self.result = result
         reason = result.reason or "Policy denied the action"
-        super().__init__(f"AgentProof: {reason}")
+        super().__init__(f"AutomaGuard: {reason}")
 
 
 def enforce(
@@ -45,11 +45,11 @@ def enforce(
     on_redact: Optional[Callable[[dict, PolicyResult], dict]] = None,
 ) -> Any:
     """
-    Wrap an AI client with AgentProof policy enforcement.
+    Wrap an AI client with AutomaGuard policy enforcement (Aegis policies).
 
-    This is the primary entry point for AgentProof. It returns a
+    This is the primary entry point for AutomaGuard. It returns a
     transparent proxy around your client that intercepts tool calls
-    and evaluates them against the loaded policy.
+    and evaluates them against the loaded Aegis policy.
 
     Args:
         client: An OpenAI client, LangChain LLM, or any object whose
@@ -65,7 +65,7 @@ def enforce(
 
     Returns:
         A proxy object that behaves identically to `client` but enforces
-        the policy on every tool call.
+        the Aegis policy on every tool call.
 
     Example:
         client = openai.OpenAI()
@@ -75,7 +75,7 @@ def enforce(
         response = safe_client.chat.completions.create(...)
 
         # But if the agent tries to call an unauthorized tool:
-        # → EnforcementError: AgentProof: External HTTP calls not permitted
+        # → EnforcementError: AutomaGuard: External HTTP calls not permitted
     """
     # Load the policy engine
     if isinstance(policy, (str, Path)):
@@ -88,7 +88,7 @@ def enforce(
         )
 
     logger.info(
-        "AgentProof: enforcing policy '%s' on %s",
+        "AutomaGuard: enforcing policy '%s' on %s",
         engine.policy_name,
         type(client).__name__,
     )
@@ -159,7 +159,7 @@ def _wrap_openai(client, engine, on_deny, on_audit, on_redact):
     # Monkey-patch the create method
     client.chat.completions.create = patched_create
     # Store a reference so it can be inspected
-    client._agentproof_engine = engine
+    client._automaguard_engine = engine
     return client
 
 
@@ -233,7 +233,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
             raise EnforcementError(result)
         elif on_deny == "log":
             logger.warning(
-                "AgentProof DENY (monitoring mode): %s — %s",
+                "AutomaGuard DENY (monitoring mode): %s — %s",
                 fields.get("tool", "unknown"),
                 result.reason,
             )
@@ -242,7 +242,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
 
     elif result.verdict == "audit":
         logger.info(
-            "AgentProof AUDIT: %s — %s",
+            "AutomaGuard AUDIT: %s — %s",
             fields.get("tool", "unknown"),
             result.reason or "audited",
         )
@@ -251,7 +251,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
 
     elif result.verdict == "redact":
         logger.info(
-            "AgentProof REDACT: %s — %s",
+            "AutomaGuard REDACT: %s — %s",
             fields.get("tool", "unknown"),
             result.reason or "fields redacted",
         )
