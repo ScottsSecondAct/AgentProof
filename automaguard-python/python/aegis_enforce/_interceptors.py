@@ -63,7 +63,7 @@ class AutomaGuardCallbackHandler:
         tool_name = serialized.get("name", "unknown")
 
         fields = {
-            "tool": tool_name,
+            "tool_name": tool_name,
             "arguments": input_str,
             "description": serialized.get("description", ""),
         }
@@ -80,7 +80,7 @@ class AutomaGuardCallbackHandler:
                 raise EnforcementError(result)
             elif self.on_deny == "log":
                 logger.warning(
-                    "AutomaGuard DENY: tool=%s reason=%s",
+                    "AutomaGuard DENY: tool_name=%s reason=%s",
                     tool_name,
                     result.reason,
                 )
@@ -179,7 +179,7 @@ def intercept_tool_call(
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             fields = {
-                "tool": name,
+                "tool_name": name,
                 "arguments": str(kwargs) if kwargs else str(args),
             }
             if kwargs:

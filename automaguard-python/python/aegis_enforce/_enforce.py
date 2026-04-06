@@ -136,7 +136,7 @@ def _wrap_openai(client, engine, on_deny, on_audit, on_redact):
 
                 # Build the event
                 fields = {
-                    "tool": fn.name,
+                    "tool_name": fn.name,
                     "arguments": fn.arguments if isinstance(fn.arguments, str) else str(fn.arguments),
                     "call_id": getattr(tool_call, "id", "unknown"),
                 }
@@ -202,7 +202,7 @@ class _GenericProxy:
         def wrapper(*args, **kwargs):
             # Build the event
             fields = {
-                "tool": name,
+                "tool_name": name,
                 "arguments": str(kwargs) if kwargs else str(args),
             }
             if kwargs:
@@ -234,7 +234,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
         elif on_deny == "log":
             logger.warning(
                 "AutomaGuard DENY (monitoring mode): %s — %s",
-                fields.get("tool", "unknown"),
+                fields.get("tool_name", "unknown"),
                 result.reason,
             )
         else:
@@ -243,7 +243,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
     elif result.verdict == "audit":
         logger.info(
             "AutomaGuard AUDIT: %s — %s",
-            fields.get("tool", "unknown"),
+            fields.get("tool_name", "unknown"),
             result.reason or "audited",
         )
         if on_audit:
@@ -252,7 +252,7 @@ def _handle_result(result, on_deny, on_audit, on_redact, fields):
     elif result.verdict == "redact":
         logger.info(
             "AutomaGuard REDACT: %s — %s",
-            fields.get("tool", "unknown"),
+            fields.get("tool_name", "unknown"),
             result.reason or "fields redacted",
         )
         if on_redact:

@@ -1,0 +1,4 @@
+langchain>=0.2
+langchain-openai>=0.1
+openai>=1.0
+automaguard-python @ file:../../automaguard-python

@@ -1,0 +1,63 @@
+{
+  "name": "automaguard",
+  "version": "0.1.0",
+  "description": "AutomaGuard TypeScript SDK — compile-time policy enforcement for AI agents",
+  "license": "Apache-2.0",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./langchain": {
+      "types": "./langchain.d.ts",
+      "default": "./langchain.js"
+    },
+    "./openai": {
+      "types": "./openai.d.ts",
+      "default": "./openai.js"
+    },
+    "./vercel-ai": {
+      "types": "./vercel-ai.d.ts",
+      "default": "./vercel-ai.js"
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release && tsc",
+    "build:debug": "napi build --platform && tsc",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "napi": {
+    "name": "automaguard-ts",
+    "triples": {
+      "defaults": true,
+      "additional": ["aarch64-apple-darwin"]
+    }
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2",
+    "@types/jest": "^29",
+    "@types/node": "^20",
+    "jest": "^29",
+    "ts-jest": "^29",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=0.2",
+    "openai": ">=4",
+    "ai": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": { "optional": true },
+    "openai": { "optional": true },
+    "ai": { "optional": true }
+  },
+  "optionalDependencies": {
+    "automaguard-linux-x64-gnu": "0.1.0",
+    "automaguard-darwin-arm64": "0.1.0",
+    "automaguard-darwin-x64": "0.1.0",
+    "automaguard-win32-x64-msvc": "0.1.0"
+  }
+}

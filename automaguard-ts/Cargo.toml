@@ -1,0 +1,23 @@
+[package]
+name = "automaguard-ts"
+version = "0.1.0"
+edition = "2021"
+description = "AutomaGuard TypeScript SDK — napi-rs native addon for Node.js"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["napi4", "serde-json"] }
+napi-derive = "2"
+aegis-compiler = { path = "../aegis-compiler" }
+aegis-runtime   = { path = "../aegis-runtime" }
+serde_json      = "1"
+smol_str        = "0.2"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true

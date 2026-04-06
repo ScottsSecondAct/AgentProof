@@ -1,0 +1,23 @@
+{
+  "name": "automaguard-typescript-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AutomaGuard TypeScript SDK example — Customer Data Assistant",
+  "type": "module",
+  "scripts": {
+    "agent": "tsx src/agent.ts",
+    "agent:safe": "tsx src/agent.ts --safe",
+    "agent:unsafe": "tsx src/agent.ts --unsafe",
+    "stress": "tsx src/stress.ts"
+  },
+  "dependencies": {
+    "@langchain/openai": "^0.2",
+    "automaguard": "file:../../automaguard-ts",
+    "langchain": "^0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
