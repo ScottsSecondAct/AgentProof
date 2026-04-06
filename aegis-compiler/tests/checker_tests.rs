@@ -318,7 +318,6 @@ fn assert_has_code(diags: &DiagnosticSink, code: DiagnosticCode) {
     );
 }
 
-
 // ── Valid programs ────────────────────────────────────────────────────────────
 
 #[test]
@@ -1021,7 +1020,10 @@ fn event_field_equality_in_when_clause_no_errors() {
     let cond = binary_expr(BinaryOp::Eq, event_field_expr("tool_name"), str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1032,7 +1034,10 @@ fn event_field_neq_in_when_clause_no_errors() {
     let cond = binary_expr(BinaryOp::Neq, event_field_expr("tool_name"), str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1110,7 +1115,10 @@ fn event_field_contains_predicate_no_errors() {
     let cond = predicate_expr(PredicateKind::Contains, subject, str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1119,10 +1127,17 @@ fn event_field_contains_predicate_no_errors() {
 fn context_field_access_in_when_clause_no_errors() {
     // `context` is a keyword; `context.field` produces `Expr::Context`.
     // This should be accepted inside a rule without errors.
-    let cond = binary_expr(BinaryOp::Eq, context_field_expr("allowed_tools"), str_expr());
+    let cond = binary_expr(
+        BinaryOp::Eq,
+        context_field_expr("allowed_tools"),
+        str_expr(),
+    );
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1141,14 +1156,21 @@ fn unknown_multi_segment_still_emits_e0001() {
     );
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0001);
 }
 
 // ── Additional AST builder helpers (used by the coverage gap tests below) ─────
 
-fn method_call_expr(object: Spanned<Expr>, method: &str, args: Vec<Spanned<Expr>>) -> Spanned<Expr> {
+fn method_call_expr(
+    object: Spanned<Expr>,
+    method: &str,
+    args: Vec<Spanned<Expr>>,
+) -> Spanned<Expr> {
     Spanned::dummy(Expr::MethodCall {
         object: Box::new(object),
         method: ident(method),
@@ -1344,7 +1366,10 @@ fn method_call_on_object_no_errors() {
     let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1358,7 +1383,10 @@ fn method_call_args_are_type_checked() {
     let cond = binary_expr(BinaryOp::Eq, expr, str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1373,7 +1401,10 @@ fn count_without_filter_returns_int_no_errors() {
     let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1385,7 +1416,10 @@ fn count_with_bool_filter_no_errors() {
     let cond = binary_expr(BinaryOp::Gt, expr, int_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1398,7 +1432,10 @@ fn count_filter_returning_int_emits_e0101() {
     let cond = binary_expr(BinaryOp::Eq, expr, int_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0101);
 }
@@ -1416,7 +1453,10 @@ fn match_with_expr_arms_no_errors() {
     // use the match result as a when condition
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(expr), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(expr), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1443,7 +1483,10 @@ fn match_with_block_arm_no_errors() {
     let expr = match_expr_node(int_expr(), arms);
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(bool_expr()), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(bool_expr()), deny_verdict()],
+        )],
     )]);
     // Compile a program that contains the match expr inside a binding so the
     // checker visits it without requiring it to be bool.
@@ -1648,11 +1691,7 @@ fn policy_level_binding_is_visible_in_rule_no_errors() {
             rule_member(
                 "tool_call",
                 vec![
-                    when_clause(binary_expr(
-                        BinaryOp::Eq,
-                        var_expr("threshold"),
-                        int_expr(),
-                    )),
+                    when_clause(binary_expr(BinaryOp::Eq, var_expr("threshold"), int_expr())),
                     deny_verdict(),
                 ],
             ),
@@ -1687,12 +1726,7 @@ fn policy_level_function_return_mismatch_emits_e0100() {
     let prog = program(vec![simple_policy(
         "Guard",
         vec![
-            fn_policy_member(
-                "bad_fn",
-                vec![],
-                prim(PrimitiveType::Bool),
-                int_expr(),
-            ),
+            fn_policy_member("bad_fn", vec![], prim(PrimitiveType::Bool), int_expr()),
             rule_member("tool_call", vec![deny_verdict()]),
         ],
     )]);
@@ -1705,12 +1739,7 @@ fn policy_level_function_callable_from_rule_no_errors() {
     let prog = program(vec![simple_policy(
         "Guard",
         vec![
-            fn_policy_member(
-                "ok",
-                vec![],
-                prim(PrimitiveType::Bool),
-                bool_expr(),
-            ),
+            fn_policy_member("ok", vec![], prim(PrimitiveType::Bool), bool_expr()),
             rule_member(
                 "tool_call",
                 vec![when_clause(call_expr("ok", vec![])), deny_verdict()],
@@ -1727,7 +1756,10 @@ fn module_import_no_errors() {
     // Import resolution is a future pass; the checker accepts imports structurally
     let prog = program(vec![
         import_module("automaguard.stdlib.pii"),
-        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+        simple_policy(
+            "Guard",
+            vec![rule_member("tool_call", vec![deny_verdict()])],
+        ),
     ]);
     assert_no_errors(&check(&prog));
 }
@@ -1736,7 +1768,10 @@ fn module_import_no_errors() {
 fn named_import_no_errors() {
     let prog = program(vec![
         import_names("automaguard.stdlib", vec!["network", "compliance"]),
-        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+        simple_policy(
+            "Guard",
+            vec![rule_member("tool_call", vec![deny_verdict()])],
+        ),
     ]);
     assert_no_errors(&check(&prog));
 }
@@ -1747,7 +1782,10 @@ fn import_with_policy_coexist_no_errors() {
     let prog = program(vec![
         import_module("automaguard.stdlib"),
         type_decl("Endpoint", vec![("url", prim(PrimitiveType::String))]),
-        simple_policy("Guard", vec![rule_member("tool_call", vec![deny_verdict()])]),
+        simple_policy(
+            "Guard",
+            vec![rule_member("tool_call", vec![deny_verdict()])],
+        ),
     ]);
     assert_no_errors(&check(&prog));
 }
@@ -1780,7 +1818,10 @@ fn known_event_known_field_no_errors() {
     let cond = binary_expr(BinaryOp::Eq, event_field_expr("tool_name"), str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }
@@ -1791,7 +1832,10 @@ fn known_event_unknown_field_emits_e0108() {
     let cond = binary_expr(BinaryOp::Eq, event_field_expr("nonexistent"), str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0108);
 }
@@ -1813,11 +1857,7 @@ fn unknown_event_unknown_field_no_errors() {
 #[test]
 fn data_access_event_known_field_no_errors() {
     // event.resource_type in on data_access — in schema → no error
-    let cond = binary_expr(
-        BinaryOp::Eq,
-        event_field_expr("resource_type"),
-        str_expr(),
-    );
+    let cond = binary_expr(BinaryOp::Eq, event_field_expr("resource_type"), str_expr());
     let prog = program(vec![simple_policy(
         "Guard",
         vec![rule_member(
@@ -1912,7 +1952,10 @@ fn known_event_field_used_in_predicate_no_errors() {
     );
     let prog = program(vec![simple_policy(
         "Guard",
-        vec![rule_member("tool_call", vec![when_clause(cond), deny_verdict()])],
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(cond), deny_verdict()],
+        )],
     )]);
     assert_no_errors(&check(&prog));
 }

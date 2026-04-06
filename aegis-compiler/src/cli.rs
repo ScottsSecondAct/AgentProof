@@ -292,10 +292,7 @@ fn parse_compile_args(args: &[String]) -> Option<(PathBuf, PathBuf)> {
 //  Real pipeline — parse → type-check → lower
 // ═══════════════════════════════════════════════════════════════════════
 
-fn run_pipeline(
-    source: &str,
-    filename: &str,
-) -> Result<Vec<crate::ir::CompiledPolicy>, String> {
+fn run_pipeline(source: &str, filename: &str) -> Result<Vec<crate::ir::CompiledPolicy>, String> {
     use crate::checker::TypeChecker;
 
     // 1. Parse source into AST

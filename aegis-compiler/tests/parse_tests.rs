@@ -1050,8 +1050,15 @@ fn full_policy_pipeline() {
 #[test]
 fn parse_error_returns_empty_program_with_error_diag() {
     let (prog, diags) = parse_source("@@@invalid syntax###", "test.aegis");
-    assert!(diags.has_errors(), "invalid syntax should produce a parse error");
-    assert_eq!(prog.declarations.len(), 0, "error program has no declarations");
+    assert!(
+        diags.has_errors(),
+        "invalid syntax should produce a parse error"
+    );
+    assert_eq!(
+        prog.declarations.len(),
+        0,
+        "error program has no declarations"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1196,9 +1203,10 @@ fn redact_verdict_parses() {
             }
         })
         .unwrap();
-    let has_redact = rule.clauses.iter().any(|c| {
-        matches!(&c.node, RuleClause::Verdict(v) if v.verdict.node == Verdict::Redact)
-    });
+    let has_redact = rule
+        .clauses
+        .iter()
+        .any(|c| matches!(&c.node, RuleClause::Verdict(v) if v.verdict.node == Verdict::Redact));
     assert!(has_redact, "rule should have a redact verdict");
 }
 
@@ -1225,9 +1233,10 @@ fn escalate_action_parses() {
             }
         })
         .unwrap();
-    let has_escalate = rule.clauses.iter().any(|c| {
-        matches!(&c.node, RuleClause::Action(a) if a.verb.node == ActionVerb::Escalate)
-    });
+    let has_escalate = rule
+        .clauses
+        .iter()
+        .any(|c| matches!(&c.node, RuleClause::Action(a) if a.verb.node == ActionVerb::Escalate));
     assert!(has_escalate, "rule should have an escalate action");
 }
 

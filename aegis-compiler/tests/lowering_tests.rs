@@ -936,7 +936,11 @@ fn diamond_base_rule_appears_once_in_deep_child() {
     let (policies, _) = lower::compile(&prog);
     let a = policies.iter().find(|p| p.name.as_str() == "A").unwrap();
     // A inherits d_ev (via B←D) and b_ev (from B), plus its own a_ev.
-    assert_eq!(a.rules.len(), 3, "A should have d + b + own rule, each once");
+    assert_eq!(
+        a.rules.len(),
+        3,
+        "A should have d + b + own rule, each once"
+    );
     // Count occurrences of d_ev specifically.
     let d_ev_count = a
         .rules
@@ -961,8 +965,16 @@ fn diamond_base_state_machine_appears_once_in_each_sibling() {
     let (policies, _) = lower::compile(&prog);
     let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
     let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
-    assert_eq!(b.state_machines.len(), 1, "B should inherit D's SM exactly once");
-    assert_eq!(c.state_machines.len(), 1, "C should inherit D's SM exactly once");
+    assert_eq!(
+        b.state_machines.len(),
+        1,
+        "B should inherit D's SM exactly once"
+    );
+    assert_eq!(
+        c.state_machines.len(),
+        1,
+        "C should inherit D's SM exactly once"
+    );
 }
 
 #[test]
@@ -985,8 +997,16 @@ fn diamond_base_constraint_appears_once_in_each_sibling() {
     let (policies, _) = lower::compile(&prog);
     let b = policies.iter().find(|p| p.name.as_str() == "B").unwrap();
     let c = policies.iter().find(|p| p.name.as_str() == "C").unwrap();
-    assert_eq!(b.constraints.len(), 1, "B should inherit D's constraint exactly once");
-    assert_eq!(c.constraints.len(), 1, "C should inherit D's constraint exactly once");
+    assert_eq!(
+        b.constraints.len(),
+        1,
+        "B should inherit D's constraint exactly once"
+    );
+    assert_eq!(
+        c.constraints.len(),
+        1,
+        "C should inherit D's constraint exactly once"
+    );
 }
 
 #[test]
@@ -1033,9 +1053,19 @@ fn derived_inherits_single_rule_from_base() {
         policy_extends("Derived", "Base", vec![]),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
-    assert_eq!(derived.rules.len(), 1, "derived should inherit the base rule");
-    assert!(derived.rules[0].on_events.iter().any(|e| e.as_str() == "base_event"));
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
+    assert_eq!(
+        derived.rules.len(),
+        1,
+        "derived should inherit the base rule"
+    );
+    assert!(derived.rules[0]
+        .on_events
+        .iter()
+        .any(|e| e.as_str() == "base_event"));
 }
 
 #[test]
@@ -1052,10 +1082,23 @@ fn derived_has_both_inherited_and_own_rules() {
         ),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
-    assert_eq!(derived.rules.len(), 2, "derived should have base + own rule");
-    assert!(derived.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "base_event")));
-    assert!(derived.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "derived_event")));
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
+    assert_eq!(
+        derived.rules.len(),
+        2,
+        "derived should have base + own rule"
+    );
+    assert!(derived
+        .rules
+        .iter()
+        .any(|r| r.on_events.iter().any(|e| e.as_str() == "base_event")));
+    assert!(derived
+        .rules
+        .iter()
+        .any(|r| r.on_events.iter().any(|e| e.as_str() == "derived_event")));
 }
 
 #[test]
@@ -1066,7 +1109,10 @@ fn derived_inherits_base_severity() {
         policy_extends("Derived", "Base", vec![]),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
     assert_eq!(derived.severity, SeverityLevel::High);
 }
 
@@ -1075,10 +1121,17 @@ fn derived_severity_overrides_base() {
     // Base is Low; derived sets Critical → last-wins gives Critical.
     let prog = program(vec![
         simple_policy("Base", vec![severity_member(SeverityLevel::Low)]),
-        policy_extends("Derived", "Base", vec![severity_member(SeverityLevel::Critical)]),
+        policy_extends(
+            "Derived",
+            "Base",
+            vec![severity_member(SeverityLevel::Critical)],
+        ),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
     assert_eq!(derived.severity, SeverityLevel::Critical);
 }
 
@@ -1093,8 +1146,15 @@ fn derived_inherits_base_state_machine() {
         policy_extends("Derived", "Base", vec![]),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
-    assert_eq!(derived.state_machines.len(), 1, "derived should inherit base state machine");
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
+    assert_eq!(
+        derived.state_machines.len(),
+        1,
+        "derived should inherit base state machine"
+    );
 }
 
 #[test]
@@ -1111,7 +1171,10 @@ fn derived_accumulates_state_machines_from_base_and_own() {
         ),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
     assert_eq!(derived.state_machines.len(), 2);
 }
 
@@ -1131,8 +1194,15 @@ fn derived_inherits_base_constraint() {
         policy_extends("Derived", "Base", vec![]),
     ]);
     let (policies, _) = lower::compile(&prog);
-    let derived = policies.iter().find(|p| p.name.as_str() == "Derived").unwrap();
-    assert_eq!(derived.constraints.len(), 1, "derived should inherit the base constraint");
+    let derived = policies
+        .iter()
+        .find(|p| p.name.as_str() == "Derived")
+        .unwrap();
+    assert_eq!(
+        derived.constraints.len(),
+        1,
+        "derived should inherit the base constraint"
+    );
 }
 
 #[test]
@@ -1140,15 +1210,36 @@ fn multilevel_leaf_inherits_all_ancestor_rules() {
     // Root → Mid → Leaf; each level contributes one rule.
     let prog = program(vec![
         simple_policy("Root", vec![rule_member("root_ev", vec![deny_verdict()])]),
-        policy_extends("Mid", "Root", vec![rule_member("mid_ev", vec![deny_verdict()])]),
-        policy_extends("Leaf", "Mid", vec![rule_member("leaf_ev", vec![allow_verdict()])]),
+        policy_extends(
+            "Mid",
+            "Root",
+            vec![rule_member("mid_ev", vec![deny_verdict()])],
+        ),
+        policy_extends(
+            "Leaf",
+            "Mid",
+            vec![rule_member("leaf_ev", vec![allow_verdict()])],
+        ),
     ]);
     let (policies, _) = lower::compile(&prog);
     let leaf = policies.iter().find(|p| p.name.as_str() == "Leaf").unwrap();
-    assert_eq!(leaf.rules.len(), 3, "leaf should have root + mid + own rule");
-    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "root_ev")));
-    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "mid_ev")));
-    assert!(leaf.rules.iter().any(|r| r.on_events.iter().any(|e| e.as_str() == "leaf_ev")));
+    assert_eq!(
+        leaf.rules.len(),
+        3,
+        "leaf should have root + mid + own rule"
+    );
+    assert!(leaf
+        .rules
+        .iter()
+        .any(|r| r.on_events.iter().any(|e| e.as_str() == "root_ev")));
+    assert!(leaf
+        .rules
+        .iter()
+        .any(|r| r.on_events.iter().any(|e| e.as_str() == "mid_ev")));
+    assert!(leaf
+        .rules
+        .iter()
+        .any(|r| r.on_events.iter().any(|e| e.as_str() == "leaf_ev")));
 }
 
 #[test]
@@ -1207,7 +1298,11 @@ fn temporal_after(condition: Spanned<Expr>, trigger: Spanned<Expr>) -> Spanned<E
 fn next_invariant_compiles_to_state_machine_with_kind_next() {
     let prog = program(vec![simple_policy(
         "P",
-        vec![proof_member("Proof", "MustNext", temporal_next(bool_expr()))],
+        vec![proof_member(
+            "Proof",
+            "MustNext",
+            temporal_next(bool_expr()),
+        )],
     )]);
     let (policies, diags) = lower::compile(&prog);
     assert!(!diags.has_errors());
@@ -1221,7 +1316,11 @@ fn next_state_machine_has_four_states() {
     // next(φ) → initial → checking → satisfied/violated (4 states)
     let prog = program(vec![simple_policy(
         "P",
-        vec![proof_member("Proof", "NextCheck", temporal_next(bool_expr()))],
+        vec![proof_member(
+            "Proof",
+            "NextCheck",
+            temporal_next(bool_expr()),
+        )],
     )]);
     let (policies, _) = lower::compile(&prog);
     assert_eq!(policies[0].state_machines[0].states.len(), 4);

@@ -32,7 +32,10 @@ fn check(source: &str) -> (String, Vec<aegis_compiler::diagnostics::Diagnostic>)
 fn e0304_span_covers_base_policy_name() {
     let src = "policy Derived extends UnknownBase { severity high }";
     let (source, diags) = check(src);
-    let d = diags.iter().find(|d| d.code == DiagnosticCode::E0304).expect("E0304");
+    let d = diags
+        .iter()
+        .find(|d| d.code == DiagnosticCode::E0304)
+        .expect("E0304");
     let text = span_text(&source, d.span);
     assert!(
         text.contains("UnknownBase"),
@@ -46,7 +49,10 @@ fn e0304_span_covers_base_policy_name() {
 fn e0301_span_is_non_zero() {
     let src = "policy P { severity low severity high }";
     let (_, diags) = check(src);
-    let d = diags.iter().find(|d| d.code == DiagnosticCode::E0301).expect("E0301");
+    let d = diags
+        .iter()
+        .find(|d| d.code == DiagnosticCode::E0301)
+        .expect("E0301");
     assert!(d.span.start < d.span.end, "E0301 span should be non-zero");
 }
 
@@ -64,7 +70,10 @@ policy P {
 }
 "#;
     let (_, diags) = check(src);
-    let d = diags.iter().find(|d| d.code == DiagnosticCode::E0202).expect("E0202");
+    let d = diags
+        .iter()
+        .find(|d| d.code == DiagnosticCode::E0202)
+        .expect("E0202");
     assert!(d.span.start < d.span.end, "E0202 span should be non-zero");
 }
 
