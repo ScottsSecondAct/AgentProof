@@ -458,12 +458,12 @@ Go module: `github.com/automaguard/automaguard-go`.
 ## Implementation Order
 
 ### Phase 1 — Foundation (prerequisite for all non-Rust SDKs)
-1. Build `aegis-ffi/` C ABI layer with `cbindgen`-generated header
+1. ✅ Build `aegis-ffi/` C ABI layer with `cbindgen`-generated header
 2. Set up CI to publish prebuilt `libaegis` binaries per platform (GitHub
    Actions matrix: linux-x64, darwin-arm64, darwin-x64, win32-x64)
 
 ### Phase 2 — Rust SDK
-3. `automaguard-rs/`: ergonomic wrapper, async engine, publish to crates.io
+3. ✅ `automaguard-rs/`: ergonomic wrapper, async engine, publish to crates.io
 
 ### Phase 3 — TypeScript SDK
 4. `automaguard-ts/`: napi-rs engine binding, core API
@@ -518,6 +518,52 @@ The C ABI uses `aegis_last_error()` (thread-local string). Each SDK must:
 - Call `aegis_last_error()` and surface it as the native exception type
 - Never silently swallow FFI errors (fail-closed, matching the Python SDK
   semantics in `automaguard-python`)
+
+---
+
+## Bug Fixes Discovered During Implementation
+
+The following bugs in existing crates were discovered while implementing Phase 1
+and Phase 2 and have been fixed.
+
+### `aegis-runtime`: violated absorbing state machines stopped denying
+
+**File**: `aegis-runtime/src/engine.rs` — `PolicyEngine::evaluate()`
+
+State machines that had entered a terminal violated state (e.g. after an
+`always(φ)` invariant was broken) were correctly added to the `violations` list
+on every subsequent event, but were **not** updating the `verdict` field to
+`Deny`. This meant the first violation event was blocked correctly, but any
+immediately following "clean" event was let through with an `Allow` verdict while
+still reporting violation metadata — a serious enforcement gap.
+
+**Fix**: Added a `verdict = Deny` update inside the non-active `is_violated()`
+branch alongside the existing `violations.push(...)`.
+
+**Detected by**: `automaguard-rs` integration test
+`state_machine_remains_violated_after_first_violation`.
+
+### `aegis-compiler`: `BytecodeError` missing `std::error::Error` impl
+
+**File**: `aegis-compiler/src/bytecode.rs`
+
+`BytecodeError` was a `thiserror`-derived enum but did not implement
+`std::error::Error`. This prevented the SDK's `#[from]` derive for
+`Error::Load(#[from] BytecodeError)` from compiling.
+
+**Fix**: Added `impl std::error::Error for BytecodeError` with a `source()`
+implementation that returns the inner `std::io::Error` for the `Io` variant.
+
+### `aegis-runtime`: `Value` missing `From` impls
+
+**File**: `aegis-runtime/src/event.rs`
+
+`Value` had no standard `From` conversions, forcing callers to construct
+`Value::String(SmolStr::new(...))` etc. directly. Implementations in a
+downstream crate would violate the orphan rule.
+
+**Fix**: Added `From<&str>`, `From<String>`, `From<i64>`, `From<f64>`, and
+`From<bool>` impls in `event.rs` (the crate that owns `Value`).
 
 ---
 
