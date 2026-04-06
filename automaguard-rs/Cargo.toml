@@ -1,0 +1,20 @@
+[package]
+name = "automaguard"
+version = "0.1.0"
+edition = "2021"
+description = "AutomaGuard Rust SDK — compiled temporal policy enforcement for AI agents"
+license = "Apache-2.0"
+
+[features]
+# Enable the AsyncPolicyEngine wrapper (requires tokio runtime).
+async = ["dep:tokio"]
+
+[dependencies]
+aegis-compiler = { path = "../aegis-compiler" }
+aegis-runtime   = { path = "../aegis-runtime" }
+thiserror       = "1"
+smol_str        = { version = "0.2", features = ["serde"] }
+tokio           = { version = "1", features = ["rt", "sync"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

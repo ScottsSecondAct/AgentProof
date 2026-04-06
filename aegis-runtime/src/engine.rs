@@ -364,7 +364,10 @@ impl PolicyEngine {
         // ── 3. Advance state machines ────────────────────────────────
         for sm in &mut self.state_machines {
             if !sm.is_active() {
-                // Already in terminal state — check for existing violation
+                // Already in a terminal state.
+                // Violated absorbing states must keep denying on every subsequent
+                // event — the session is permanently blocked once a safety
+                // invariant is broken.
                 if sm.is_violated() {
                     violations.push(Violation {
                         proof_name: sm.spec.name.clone(),
@@ -375,6 +378,13 @@ impl PolicyEngine {
                             sm.spec.invariant_name, sm.spec.name
                         ),
                     });
+                    if verdict != Verdict::Deny {
+                        verdict = Verdict::Deny;
+                        reason = Some(format!(
+                            "Invariant violation: {} ({})",
+                            sm.spec.invariant_name, sm.spec.name
+                        ));
+                    }
                 }
                 continue;
             }

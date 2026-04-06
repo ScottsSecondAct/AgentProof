@@ -2,7 +2,7 @@
 
 **Runtime policy enforcement for AI agents.** One line to protect your users.
 
-AutomaGuard ensures your AI agents never take unauthorized actions. Write policies in the [Aegis language](https://github.com/ScottsSecondAct/AutomaGuard), compile them, and enforce them at runtime with <10ms latency.
+AutomaGuard ensures your AI agents never take unauthorized actions. Write policies in the [Aegis Policy Language](https://github.com/ScottsSecondAct/AutomaGuard), compile them, and enforce them at runtime with <10ms latency.
 
 ## Install
 
@@ -82,7 +82,7 @@ def send_email(to: str, subject: str, body: str):
 
 ## Writing Policies
 
-Policies are written in the Aegis language and compiled with the `aegisc` CLI:
+Policies are written in the Aegis Policy Language and compiled with the `aegisc` CLI:
 
 ```
 policy DataGuard {
@@ -174,7 +174,7 @@ pytest
 
 ## Part of AutomaGuard
 
-This SDK is the Python interface to AutomaGuard's [compiler](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-compiler) and [runtime verifier](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-runtime). The full project, including the Aegis language specification, is at [github.com/ScottsSecondAct/AutomaGuard](https://github.com/ScottsSecondAct/AutomaGuard).
+This SDK is the Python interface to AutomaGuard's [compiler](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-compiler) and [runtime verifier](https://github.com/ScottsSecondAct/AutomaGuard/tree/main/aegis-runtime). The full project, including the Aegis Policy Language specification, is at [github.com/ScottsSecondAct/AutomaGuard](https://github.com/ScottsSecondAct/AutomaGuard).
 
 ## License
 

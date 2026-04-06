@@ -37,12 +37,12 @@
 | `parser.rs` | 1143/1319 | 86.7% |
 | `cli.rs` | 179/216 | 82.9% |
 | `lower.rs` | 664/799 | 83.1% |
-| `checker/mod.rs` | ~641/806 | ~79.5% |
-| **Total** | **~4700/5350** | **~87.8%** |
+| `checker/mod.rs` | ~496/806 | ~61.5% |
+| **Total** | **~4564/5350** | **~85.2%** |
 
-### Known gaps in `checker/mod.rs` (~20% uncovered)
+### Known gaps in `checker/mod.rs` (~38% uncovered)
 
-Coverage improved from 61.6% to ~79.5% after Task 4 and Task 5.  The remaining
+Coverage sits at ~61.5%.  The remaining
 uncovered regions fall into six groups:
 
 - **`Expr::FieldAccess` (fully dead, ~30 lines)**: The pest grammar's greedy
@@ -82,6 +82,32 @@ uncovered regions fall into six groups:
 
 ---
 
+## aegis-ffi — 14 tests, all passing
+
+### Unit tests (inline `#[cfg(test)]`, 14 tests)
+
+| Test | Coverage |
+|------|----------|
+| `engine_from_bytes_success` | `aegis_engine_from_bytes` happy path |
+| `engine_from_bytes_invalid` | Invalid bytes → NULL + error string |
+| `engine_from_file_missing` | Missing file path → NULL + error string |
+| `evaluate_allow` | Non-matching event → `{"verdict":"allow",...}` |
+| `evaluate_deny` | Matching deny rule → `{"verdict":"deny","reason":"..."}` |
+| `evaluate_empty_fields` | Empty `fields_json` (`"{}"`) → allow |
+| `evaluate_null_event_type` | Null event_type pointer → NULL + error |
+| `evaluate_null_fields` | Null fields_json pointer → NULL + error |
+| `evaluate_invalid_json` | Malformed JSON → NULL + error |
+| `evaluate_null_engine` | Null engine pointer → NULL + error |
+| `result_free_null` | `aegis_result_free(NULL)` is a no-op |
+| `engine_free_null` | `aegis_engine_free(NULL)` is a no-op |
+| `last_error_thread_local` | Error is cleared between calls on same thread |
+| `round_trip_json_fields` | Int, float, bool, string fields survive the boundary |
+
+All tests are `unsafe` blocks calling the raw C ABI directly, verifying null
+safety and JSON round-trip correctness at the FFI boundary.
+
+---
+
 ## aegis-runtime — 184 tests, all passing
 
 ### Integration tests (`tests/`, 184 tests)
@@ -116,6 +142,62 @@ The <10ms p99 guarantee is confirmed with substantial headroom on the primary sc
 
 ---
 
+## automaguard-rs — 23 tests, all passing
+
+### Integration tests (`tests/integration.rs`, 23 tests)
+
+| Test | Coverage |
+|------|----------|
+| `loads_from_bytes` | `PolicyEngine::from_bytes` round-trip |
+| `rejects_invalid_bytes` | Bad bytes → `Error::Load` |
+| `allows_non_matching_event` | Non-matching condition → `is_allowed()` |
+| `denies_matching_event` | Matching deny rule → `is_denied()`, `triggered_rules` |
+| `wrong_event_type_is_unmatched` | Wrong event type → allow (scoped rules) |
+| `evaluate_with_hashmap` | `engine.evaluate(type, HashMap)` API |
+| `enforcement_error_contains_result` | `EnforcementError::new()`, `Display`, result accessor |
+| `enforcement_error_converts_to_sdk_error` | `From<EnforcementError> for Error` |
+| `latency_is_nonzero_for_matching_rule` | `latency_us()` accessor doesn't panic |
+| `policy_name_accessible` | `engine.policy_name()` returns correct name |
+| `event_count_increments` | `event_count()` increments on each evaluate |
+| `reset_clears_event_count` | `engine.reset()` zeroes event count |
+| `rate_limit_allows_within_budget` | 3 events within limit → all allowed |
+| `rate_limit_denies_over_budget` | 4th event → deny + `constraint_violations` populated |
+| `rate_limit_does_not_fire_for_other_event_types` | Rate limiter scoped to target event type |
+| `always_sm_allows_compliant_sequence` | 5 clean events → all allowed, no violations |
+| `always_sm_denies_on_violation` | `always(tool != "exec")` tripped by exec event |
+| `state_machine_remains_violated_after_first_violation` | Violated absorbing state denies all subsequent events |
+| `into_value_conversions_work` | `From` impls: `&str`, `String`, `i64`, `f64`, `bool` |
+| `async_engine_allows_and_denies` | `AsyncPolicyEngine` allow + deny (async) |
+| `async_engine_is_cloneable_and_concurrent` | Two clones evaluate concurrently via `tokio::join!` |
+| `async_engine_event_count` | Shared `event_count()` across async evaluations |
+| `async_engine_policy_name` | `policy_name()` on async engine |
+
+The last four async tests run only with `--features async`.
+
+#### Bug discovered during SDK integration testing
+
+The `state_machine_remains_violated_after_first_violation` test exposed a bug in
+`aegis-runtime/src/engine.rs`: state machines in a terminal violated state were
+accumulating `Violation` entries but **not** setting the `Deny` verdict on
+subsequent events. The absorbing-state branch pushed to `violations` but never
+updated `verdict`. Fixed by adding:
+
+```rust
+if verdict != Verdict::Deny {
+    verdict = Verdict::Deny;
+    reason = Some(format!("Invariant violation: {} ({})", ...));
+}
+```
+
+inside the non-active `is_violated()` branch of `engine.evaluate()`.
+
+#### Supporting changes required by the SDK
+
+- **`aegis-compiler/src/bytecode.rs`**: Added missing `impl std::error::Error for BytecodeError` so `thiserror`'s `#[from]` derive works in the SDK's `Error::Load` variant.
+- **`aegis-runtime/src/event.rs`**: Added `From` impls for `Value` (`&str`, `String`, `i64`, `f64`, `bool`) to the crate that owns the type, avoiding the orphan rule.
+
+---
+
 ## automaguard-python — 91 tests, all passing
 
 ### Python tests (`tests/`, 91 tests)
@@ -134,6 +216,19 @@ All tests run against the pure-Python fallback path — no native Rust extension
 - **Round-trip tests** (requires built extension): Python `dict` → Rust `Event` → evaluate against a compiled policy → Python result `dict`. Verify verdict, diagnostics, and metadata survive the pyo3 boundary.
 - **OpenAI client wrapper**: mock `openai.OpenAI` client, assert tool calls are intercepted and verdicts applied.
 - **Framework edge cases**: Unicode in tool arguments, deeply nested JSON payloads, missing required fields, very large payloads.
+
+---
+
+## Summary
+
+| Crate | Tests |
+|-------|-------|
+| `aegis-compiler` | 492 |
+| `aegis-ffi` | 14 |
+| `aegis-runtime` | 184 |
+| `automaguard-rs` | 23 |
+| `automaguard-python` | 91 |
+| **Total** | **804** |
 
 ---
 

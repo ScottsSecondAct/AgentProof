@@ -17,7 +17,7 @@ The Aegis policy language compiler. Transforms `.aegis` source into `.aegisc` by
 
 ## Module Map
 
-- **`aegis.pest`** — pest PEG grammar for the full Aegis language. This is the authoritative parser definition.
+- **`aegis.pest`** — pest PEG grammar for the full Aegis Policy Language. This is the authoritative parser definition.
 - **`parser.rs`** — AST builder. Calls `pest` to parse source text and walks the resulting parse tree to produce `Program`. Entry point: `parse_source(source, filename) -> (Program, DiagnosticSink)`.
 - **`ast/`** — AST node definitions. `TemporalExpr` variants map to LTL: `Always` = □φ, `Eventually` = ◇φ, `Never` = □¬φ, `Until` = φUψ, `Next` = Xφ. Every node wraps content in `Spanned<T>` for error reporting.
 - **`types/`** — Semantic type system. Subtyping: `never` is bottom, `int <: float`, covariant collections, union subtyping. `TypeEnv` does scoped name resolution with push/pop.

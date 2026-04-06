@@ -83,4 +83,4 @@ AutomaGuard/
 - Don't add async to the compiler. Only the runtime needs async (for the MCP proxy interceptor).
 - Don't use `Box<dyn Error>` — use concrete error enums.
 - Don't introduce new dependencies without justification. The runtime must stay lean.
-- Don't implement YAML/JSON policy formats. The Aegis DSL is the interface; alternative formats dilute the moat.
+- Don't implement YAML/JSON policy formats. The Aegis Policy Language is the interface; alternative formats dilute the moat.

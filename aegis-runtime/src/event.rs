@@ -160,6 +160,38 @@ impl std::fmt::Display for Value {
     }
 }
 
+// ── Value conversions ─────────────────────────────────────────────────────────
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Value::String(SmolStr::new(s))
+    }
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        Value::String(SmolStr::new(&s))
+    }
+}
+
+impl From<i64> for Value {
+    fn from(n: i64) -> Self {
+        Value::Int(n)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(f: f64) -> Self {
+        Value::Float(f)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
 /// An intercepted agent event.
 ///
 /// The SDK constructs these from framework-specific hooks:

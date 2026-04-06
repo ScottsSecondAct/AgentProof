@@ -53,6 +53,15 @@ impl From<io::Error> for BytecodeError {
     }
 }
 
+impl std::error::Error for BytecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            BytecodeError::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
 impl std::fmt::Display for BytecodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

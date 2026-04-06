@@ -22,7 +22,7 @@ That's the difference between a spell-checker and a type system.
 pip install aegis-enforce
 ```
 
-Write a policy in the Aegis language:
+Write a policy in the Aegis Policy Language:
 
 ```
 policy DataGuard {
@@ -134,6 +134,40 @@ These compile to deterministic state machines at build time. At runtime, the ver
 | **MCP Proxy** | Zero (sidecar) | MCP-based agents, zero-touch deployment |
 | **Direct Engine** | Minimal | Custom frameworks, advanced use cases |
 
+## Quick Start — Rust
+
+```toml
+# Cargo.toml
+[dependencies]
+automaguard = { path = "automaguard-rs" }
+```
+
+```rust
+use automaguard::{PolicyEngine, EnforcementError};
+
+let mut engine = PolicyEngine::from_file("guard.aegisc")?;
+
+let result = engine
+    .event("tool_call")
+    .field("tool_name", "send_email")
+    .field("to", "user@external.com")
+    .evaluate()?;
+
+if result.is_denied() {
+    return Err(EnforcementError::new(result).into());
+}
+```
+
+With the `async` feature, a `spawn_blocking`-backed `AsyncPolicyEngine` lets
+the engine be shared across tokio tasks:
+
+```rust
+use automaguard::AsyncPolicyEngine;
+
+let engine = AsyncPolicyEngine::from_file("guard.aegisc")?;
+let result = engine.evaluate("tool_call", fields).await?;
+```
+
 ## Project Structure
 
 ```
@@ -141,9 +175,20 @@ AutomaGuard/
 ├── aegis-compiler/      # Rust — parser, type checker, IR lowering, bytecode
 │   └── src/aegis.pest   # pest PEG grammar
 ├── aegis-runtime/       # Rust — event evaluation, state machines, rate limits
-├── automaguard-python/   # Rust (pyo3) + Python — SDK and framework integrations
+├── aegis-ffi/           # Rust — C ABI layer (cdylib/staticlib + aegis.h)
+├── automaguard-rs/      # Rust SDK — ergonomic wrapper + async engine
+├── automaguard-python/  # Rust (pyo3) + Python — SDK and framework integrations
 └── examples/            # Example .aegis policy files
 ```
+
+## Integration Options
+
+| Method | Language | Code changes | Best for |
+|--------|----------|-------------|----------|
+| **Python SDK** | Python | One line (`enforce()`) | OpenAI, LangChain, CrewAI agents |
+| **Rust SDK** | Rust | One line (`PolicyEngine::from_file`) | Native Rust agents, tokio services |
+| **C FFI** | Any | Link `libaegis` + include `aegis.h` | TypeScript (napi-rs), C#, Java, Go SDKs |
+| **MCP Proxy** | Zero (sidecar) | Zero (sidecar) | MCP-based agents, zero-touch deployment |
 
 ## Building from Source
 
@@ -156,15 +201,20 @@ AutomaGuard/
 ### Build
 
 ```bash
-# Compiler + runtime
+# Compiler + runtime + FFI layer + Rust SDK
 cargo build --release
+
+# Rust SDK with async support
+cargo build --release --features async -p automaguard
 
 # Python SDK (development mode)
 cd automaguard-python
 maturin develop
 
-# Run tests
-cargo test
+# Run all Rust tests
+cargo test --workspace
+
+# Run Python tests
 cd automaguard-python && pytest
 ```
 
