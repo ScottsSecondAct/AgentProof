@@ -1,0 +1,75 @@
+This is BibTeX, Version 0.99d (TeX Live 2025)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: automaguard.aux
+The style file: ACM-Reference-Format.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Database file #1: automaguard.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
+Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated global_strs (elt_size=200001) to 20 items from 10.
+Reallocated glb_str_end (elt_size=4) to 20 items from 10.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Warning--no number and no volume in bai2022constitutional
+Warning--page numbers missing in both pages and numpages fields in bai2022constitutional
+Warning--empty address in greshake2023not
+Warning--page numbers missing in both pages and numpages fields in greshake2023not
+Warning--no number and no volume in inan2023llama
+Warning--page numbers missing in both pages and numpages fields in inan2023llama
+Warning--empty address in katz2019marabou
+Warning--no number and no volume in perez2022ignore
+Warning--page numbers missing in both pages and numpages fields in perez2022ignore
+Warning--empty address in rebedea2023nemo
+Warning--empty address in reger2015marq
+Warning--empty publisher in wang2021betacrown
+Warning--empty address in wang2021betacrown
+Warning--page numbers missing in both pages and numpages fields in wang2021betacrown
+Warning--no number and no volume in xavier2026agentproof
+Warning--page numbers missing in both pages and numpages fields in xavier2026agentproof
+Warning--empty publisher in xu2021fast
+Warning--empty address in xu2021fast
+Warning--page numbers missing in both pages and numpages fields in xu2021fast
+You've used 14 entries,
+            6273 wiz_defined-function locations,
+            1592 strings with 21666 characters,
+and the built_in function-call counts, 16829 in all, are:
+= -- 2048
+> -- 756
+< -- 0
++ -- 267
+- -- 265
+* -- 1323
+:= -- 1744
+add.period$ -- 68
+call.type$ -- 14
+change.case$ -- 133
+chr.to.int$ -- 14
+cite$ -- 33
+duplicate$ -- 1365
+empty$ -- 969
+format.name$ -- 317
+if$ -- 4032
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 54
+newline$ -- 145
+num.names$ -- 98
+pop$ -- 624
+preamble$ -- 1
+purify$ -- 245
+quote$ -- 0
+skip$ -- 481
+stack$ -- 0
+substring$ -- 1000
+swap$ -- 106
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 336
+warning$ -- 19
+while$ -- 73
+width$ -- 0
+write$ -- 296
+(There were 19 warnings)

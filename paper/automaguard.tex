@@ -52,11 +52,11 @@
 
 \author{Scott Davis}
 \affiliation{%
-  \institution{Independent}
-  \city{[City]}
-  \country{[Country]}
+  \institution{California State University, Sacramento}
+  \city{Sacramento}
+  \country{USA}
 }
-\email{[author@email]}
+\email{scott@ScottsSecondAct.com}
 
 \begin{abstract}
 AI agents that invoke external tools, access sensitive data, and operate with
@@ -79,9 +79,9 @@ not predictable from the graph topology). Unlike runtime guardrails that
 interpret policy at request time, AutomaGuard compiles policies to state machines
 ahead of deployment, eliminating parsing overhead and enabling a hard latency
 guarantee. Benchmarks on a realistic policy (10 rules, 2 state machines, 1 rate
-limiter) show a mean evaluation latency of 2.4\,\textmu s---more than 4$\times$
-within the 10\,ms budget---with throughput exceeding 1.3 million events per
-second. A Python SDK with LangChain and OpenAI integrations enables drop-in
+limiter) show a mean evaluation latency of 2.4\,\textmu s on the full
+evaluation path---a factor of 4{,}166$\times$ under the 10\,ms
+per-event budget. A Python SDK with LangChain and OpenAI integrations enables drop-in
 enforcement with three lines of user code.
 \end{abstract}
 
@@ -163,8 +163,9 @@ This paper makes the following contributions:
     (\S\ref{sec:runtime}).
   \item A \textbf{Python SDK} providing drop-in enforcement for LangChain and
     OpenAI agents via pyo3 bindings (\S\ref{sec:sdk}).
-  \item \textbf{Evaluation} demonstrating sub-10\,ms p99 latency with 4$\times$
-    headroom on realistic policies (\S\ref{sec:eval}).
+  \item \textbf{Evaluation} demonstrating 2.4\,\textmu s mean latency on a
+    realistic policy---a factor of 4{,}166$\times$ under the 10\,ms budget
+    (\S\ref{sec:eval}).
 \end{itemize}
 
 
@@ -338,8 +339,8 @@ Aegis syntax & LTL formula & Intuition \\
 \texttt{never($\phi$)} & $\square\neg\phi$ & $\phi$ never holds \\
 \texttt{eventually($\phi$) within T} & $\lozenge_{\leq T}\phi$ & $\phi$ holds within deadline $T$ \\
 \texttt{until($\phi$, $\psi$)} & $\phi \,\mathcal{U}\, \psi$ & $\phi$ holds until $\psi$ \\
-\texttt{before($\phi$, $\psi$)} & $\phi \,\mathcal{U}\, \psi$ & $\phi$ precedes $\psi$ \\
-\texttt{after($\phi$, $\psi$)} & $\psi \Rightarrow \lozenge\phi$ & after $\psi$, $\phi$ must follow \\
+\texttt{before($\phi$, $\psi$)} & $\neg\psi \,\mathcal{U}\, \phi$ & $\phi$ must precede $\psi$ \\
+\texttt{after($\phi$, $\psi$)} & $\square(\psi \Rightarrow \mathcal{X}\phi)$ & after $\psi$, $\phi$ must hold next \\
 \texttt{next($\phi$)} & $\mathcal{X}\phi$ & $\phi$ holds on the next event \\
 \bottomrule
 \end{tabular}
@@ -513,10 +514,20 @@ operator:
   \item[\texttt{until($\phi$, $\psi$)}] Three-state machine: $s_0$ (holding);
     transition to $s_1$ (released, absorbing) on $\psi$; transition to $s_2$
     (violated, absorbing) on $\neg\phi \wedge \neg\psi$.
-  \item[\texttt{after($\phi$, trigger)}] Three-state machine: $s_0$ (waiting
-    for trigger); transition to $s_1$ (triggered, monitoring) on \textit{trigger};
-    from $s_1$, transition to $s_2$ (satisfied, absorbing) on $\phi$, remain in
-    $s_1$ if not yet $\phi$.
+  \item[\texttt{after($\phi$, trigger)}] Four-state machine: $s_0$ (waiting
+    for trigger); transition to $s_1$ (triggered) on \textit{trigger};
+    from $s_1$, transition to $s_2$ (satisfied, absorbing) on $\phi$, transition
+    to $s_3$ (violated, absorbing) on $\neg\phi$. Because $\phi$ is evaluated on
+    the event immediately following the trigger, this encodes
+    $\square(\textit{trigger} \Rightarrow \mathcal{X}\phi)$.
+  \item[\texttt{before($\phi$, $\psi$)}] Three-state machine: $s_0$ (waiting);
+    transition to $s_1$ (satisfied, absorbing) on $\phi$; transition to $s_2$
+    (violated, absorbing) on $\psi$. Enforces that $\phi$ occurs before $\psi$
+    in the event stream ($\neg\psi \,\mathcal{U}\, \phi$).
+  \item[\texttt{next($\phi$)}] Four-state machine: $s_0$ (initial); unconditional
+    transition to $s_1$ (checking) on the next event; from $s_1$, transition to
+    $s_2$ (satisfied, absorbing) on $\phi$, transition to $s_3$ (violated,
+    absorbing) on $\neg\phi$.
 \end{description}
 
 Figure~\ref{fig:automata} illustrates the \texttt{always} and
@@ -646,7 +657,7 @@ policy configuration, and local variable slots. Design goals are:
     materializing an intermediate result vector.
 \end{itemize}
 
-The runtime's \texttt{Value} type is a six-variant enum covering \texttt{Null},
+The runtime's \texttt{Value} type is an eight-variant enum covering \texttt{Null},
 \texttt{Bool}, \texttt{Int(i64)}, \texttt{Float(f64)},
 \texttt{String(SmolStr)}, \texttt{Duration(u64)}, \texttt{List(Vec<Value>)},
 and \texttt{Map(HashMap<SmolStr, Value>)}.
@@ -811,9 +822,11 @@ Rate limiter only       & 0 & 0 & 1 & 104\,ns \\
 \end{table}
 
 The realistic scenario (10 rules, 2 state machines, 1 rate limiter) achieves
-2.4\,\textmu s mean latency---a factor of 4,166$\times$ under the 10\,ms
-budget. Throughput on the same scenario exceeds 1.3 million events per second
-on a single thread.
+2.4\,\textmu s mean latency on the full evaluation path (compound conditions,
+all 10 rules scanned)---a factor of 4,166$\times$ under the 10\,ms budget.
+For allow-listed events that exit after the first matching rule, steady-state
+throughput on the same policy exceeds 400{,}000 events per second on a single
+thread.
 
 A sustained 100-event stream completes in approximately 535\,\textmu s total
 (5.4\,\textmu s per event), reflecting the amortized cost of the sliding-window
@@ -847,16 +860,16 @@ perez2022ignore}:
     contains ".."}
 \end{description}
 
-The \texttt{data\_exfiltration\_guard.aegis} example policy (143 lines) encodes
+The \texttt{data\_exfiltration\_guard.aegis} example policy (142 lines) encodes
 15 distinct safety properties spanning all six categories above. The
-\texttt{research\_guard.aegis} example (99 lines) specifically demonstrates
+\texttt{research\_guard.aegis} example (98 lines) specifically demonstrates
 the value of temporal composition: five of its invariants detect attack
 \emph{sequences} that would be undetectable by per-event rules alone.
 
 \subsection{Compiler Test Coverage}
 
 The aegis-compiler crate contains 492 tests (152 unit, 340 integration)
-achieving 87.8\% line coverage. Coverage by module:
+achieving 85.2\% line coverage. Coverage by module:
 
 \begin{center}
 \begin{tabular}{lr}
@@ -865,12 +878,12 @@ Module & Line coverage \\
 \midrule
 \texttt{ast/nodes} & 100\% \\
 \texttt{ast/span}  & 100\% \\
-\texttt{bytecode}  & 96.7\% \\
-\texttt{ir}        & 97.1\% \\
-\texttt{diagnostics} & 93.0\% \\
-\texttt{parser}    & 86.7\% \\
-\texttt{lower}     & 83.1\% \\
-\texttt{checker}   & 79.5\% \\
+\texttt{ir}        & 99.2\% \\
+\texttt{bytecode}  & 95.7\% \\
+\texttt{diagnostics} & 97.1\% \\
+\texttt{parser}    & 86.4\% \\
+\texttt{lower}     & 82.8\% \\
+\texttt{checker}   & 61.5\% \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -908,22 +921,25 @@ supports liveness properties via Büchi-like constructions for
 \paragraph{LTL runtime monitoring.}
 There is a large literature on runtime verification of LTL
 properties~\cite{leucker2009brief,havelund2004efficient}. MarQ~\cite{reger2015marq}
-and similar monitors target Java programs with explicit state spaces.
+monitors Java execution traces using Quantified Event Automata (QEA) as the
+specification formalism.
 AutomaGuard adapts the core automaton construction to the specific domain of AI
 agent events: a typed, heterogeneous event stream with arbitrary structured
 fields, requiring the composition of temporal and data predicates.
 
 \paragraph{Policy languages for systems.}
-Rego (Open Policy Agent~\cite{toews2021opa}) and Cedar~\cite{cedar2023} are
-Datalog-inspired policy languages for access control. They operate on
-individual decision requests and do not model event sequences. AutomaGuard's
-Aegis provides temporal operators and an agent-specific event model not present
-in either.
+Rego (Open Policy Agent~\cite{toews2021opa}) is a Datalog-inspired policy
+language for access control. Cedar~\cite{cedar2023} is a purpose-built
+attribute-based access control language with SMT-backed static analysis.
+Both operate on individual decision requests and do not model event sequences.
+AutomaGuard's Aegis provides temporal operators and an agent-specific event
+model not present in either.
 
 \paragraph{Formal verification of AI systems.}
-DNN verification tools (Marabou~\cite{katz2019marabou}, $\alpha\beta$-CROWN~\cite{xu2021fast})
-verify properties of neural network weights, not behavioral policies at
-deployment. AI safety frameworks such as Constitutional AI~\cite{bai2022constitutional}
+DNN verification tools (Marabou~\cite{katz2019marabou},
+$\alpha,\beta$-CROWN~\cite{xu2021fast,wang2021betacrown})
+verify input-output properties of the function computed by a deployed neural
+network, not behavioral policies over agent event streams. AI safety frameworks such as Constitutional AI~\cite{bai2022constitutional}
 operate at the training level. AutomaGuard is complementary: it enforces
 behavioral constraints on a deployed system without access to model internals.
 

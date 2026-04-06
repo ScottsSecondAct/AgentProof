@@ -1,0 +1,128 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{rebedea2023nemo}
+\citation{inan2023llama}
+\citation{xavier2026agentproof}
+\@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Runtime guardrails (interpreted).}{1}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Static workflow analyzers.}{1}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Motivation and Threat Model}{2}{section.2}\protected@file@percent }
+\newlabel{sec:motivation}{{2}{2}{Motivation and Threat Model}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Representative Agent Threats}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Indirect prompt injection via action sequences.}{2}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{PII exfiltration via tool arguments.}{2}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Threat Model}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}The Aegis Policy Language}{2}{section.3}\protected@file@percent }
+\newlabel{sec:aegis}{{3}{2}{The Aegis Policy Language}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Syntax Overview}{2}{subsection.3.1}\protected@file@percent }
+\newlabel{lst:simple}{{1}{2}{A minimal Aegis policy}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces A minimal Aegis policy.}}{2}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Event Model}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Type System}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Rule Clauses}{3}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Temporal Operators}{3}{subsection.3.5}\protected@file@percent }
+\newlabel{sec:temporal}{{3.5}{3}{Temporal Operators}{subsection.3.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Composing temporal and data predicates.}{3}{section*.8}\protected@file@percent }
+\newlabel{lst:seq}{{2}{3}{Sequence-level exfiltration detection}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces Sequence-level exfiltration detection.}}{3}{lstlisting.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Rate Limits and Quotas}{3}{subsection.3.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7}Policy Inheritance}{3}{subsection.3.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Compilation Pipeline}{3}{section.4}\protected@file@percent }
+\newlabel{sec:compiler}{{4}{3}{Compilation Pipeline}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Parsing}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Aegis compilation pipeline.}}{4}{figure.caption.9}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:pipeline}{{1}{4}{Aegis compilation pipeline}{figure.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Type Checking}{4}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Lowering and State-Machine Construction}{4}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:lowering}{{4.3}{4}{Lowering and State-Machine Construction}{subsection.4.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Inheritance resolution.}{4}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Expression lowering.}{4}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Temporal to state machine.}{4}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Bytecode Format}{4}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Runtime Verifier}{4}{section.5}\protected@file@percent }
+\newlabel{sec:runtime}{{5}{4}{Runtime Verifier}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Event Evaluation}{4}{subsection.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces State machines for \texttt  {always}($\phi $) (top) and \texttt  {eventually}($\phi $) \texttt  {within T} (bottom). $s_0$: active; $s_1$: satisfied (accepting); $s_2$: violated (absorbing). Double circles denote accepting/non-violating states.}}{5}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:automata}{{2}{5}{State machines for \texttt {always}($\phi $) (top) and \texttt {eventually}($\phi $) \texttt {within T} (bottom). $s_0$: active; $s_1$: satisfied (accepting); $s_2$: violated (absorbing). Double circles denote accepting/non-violating states}{figure.caption.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Expression Evaluator}{5}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}State-Machine Execution}{5}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Sliding-Window Rate Limiters}{5}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:ratelimit}{{5.4}{5}{Sliding-Window Rate Limiters}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Audit Log}{5}{subsection.5.5}\protected@file@percent }
+\citation{greshake2023not,perez2022ignore}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Fail-Closed Semantics}{6}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Python SDK}{6}{section.6}\protected@file@percent }
+\newlabel{sec:sdk}{{6}{6}{Python SDK}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Core API}{6}{subsection.6.1}\protected@file@percent }
+\newlabel{lst:sdk}{{3}{6}{Drop-in enforcement with three lines}{lstlisting.3}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces Drop-in enforcement with three lines.}}{6}{lstlisting.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Framework Integrations}{6}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{OpenAI.}{6}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{LangChain.}{6}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Direct Engine Access}{6}{subsection.6.3}\protected@file@percent }
+\newlabel{lst:engine}{{4}{6}{Direct engine access}{lstlisting.4}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces Direct engine access.}}{6}{lstlisting.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Per-event evaluation latency (Criterion.rs mean). $R$ = rules, $S$ = state machines, $L$ = rate limiters.}}{6}{table.caption.16}\protected@file@percent }
+\newlabel{tab:bench}{{1}{6}{Per-event evaluation latency (Criterion.rs mean). $R$ = rules, $S$ = state machines, $L$ = rate limiters}{table.caption.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation}{6}{section.7}\protected@file@percent }
+\newlabel{sec:eval}{{7}{6}{Evaluation}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Latency Benchmarks}{6}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why the latency budget is achievable.}{6}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Policy Expressiveness}{6}{subsection.7.2}\protected@file@percent }
+\citation{rebedea2023nemo}
+\citation{inan2023llama}
+\citation{xavier2026agentproof}
+\citation{leucker2009brief,havelund2004efficient}
+\citation{reger2015marq}
+\citation{toews2021opa}
+\citation{cedar2023}
+\citation{katz2019marabou}
+\citation{xu2021fast,wang2021betacrown}
+\citation{bai2022constitutional}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Compiler Test Coverage}{7}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Related Work}{7}{section.8}\protected@file@percent }
+\newlabel{sec:related}{{8}{7}{Related Work}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Runtime guardrails.}{7}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Static workflow verification.}{7}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{LTL runtime monitoring.}{7}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Policy languages for systems.}{7}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Formal verification of AI systems.}{7}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion and Limitations}{7}{section.9}\protected@file@percent }
+\newlabel{sec:discussion}{{9}{7}{Discussion and Limitations}{section.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{What AutomaGuard does not verify.}{7}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Trust boundary.}{7}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Automata completeness.}{7}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Policy composition.}{7}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{7}{section.10}\protected@file@percent }
+\newlabel{sec:conclusion}{{10}{7}{Conclusion}{section.10}{}}
+\bibstyle{ACM-Reference-Format}
+\bibdata{automaguard}
+\bibcite{cedar2023}{{1}{2023}{{Amazon Web Services}}{{}}}
+\bibcite{bai2022constitutional}{{2}{2022}{{Bai et~al\mbox  {.}}}{{}}}
+\bibcite{greshake2023not}{{3}{2023}{{Greshake et~al\mbox  {.}}}{{}}}
+\bibcite{havelund2004efficient}{{4}{2004}{{Havelund and Ro{\c {s}}u}}{{}}}
+\bibcite{inan2023llama}{{5}{2023}{{Inan et~al\mbox  {.}}}{{}}}
+\bibcite{katz2019marabou}{{6}{2019}{{Katz et~al\mbox  {.}}}{{}}}
+\bibcite{leucker2009brief}{{7}{2009}{{Leucker and Schallhart}}{{}}}
+\bibcite{perez2022ignore}{{8}{2022}{{Perez and Ribeiro}}{{}}}
+\bibcite{rebedea2023nemo}{{9}{2023}{{Rebedea et~al\mbox  {.}}}{{}}}
+\bibcite{reger2015marq}{{10}{2015}{{Reger et~al\mbox  {.}}}{{}}}
+\bibcite{toews2021opa}{{11}{2021}{{Sandall et~al\mbox  {.}}}{{}}}
+\bibcite{wang2021betacrown}{{12}{2021}{{Wang et~al\mbox  {.}}}{{}}}
+\bibcite{xavier2026agentproof}{{13}{2026}{{Xavier et~al\mbox  {.}}}{{}}}
+\bibcite{xu2021fast}{{14}{2021}{{Xu et~al\mbox  {.}}}{{}}}
+\newlabel{tocindent-1}{0pt}
+\newlabel{tocindent0}{0pt}
+\newlabel{tocindent1}{8.37pt}
+\newlabel{tocindent2}{10.34999pt}
+\newlabel{tocindent3}{0pt}
+\newlabel{tocindent4}{0pt}
+\newlabel{tocindent5}{0pt}
+\@writefile{toc}{\contentsline {section}{Acknowledgments}{8}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{8}{section*.30}\protected@file@percent }
+\newlabel{TotPages}{{8}{8}{}{page.8}{}}
+\gdef \@abspage@last{8}
