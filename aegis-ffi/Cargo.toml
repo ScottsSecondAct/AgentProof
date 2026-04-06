@@ -1,0 +1,20 @@
+[package]
+name = "aegis-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "C ABI layer for AutomaGuard — foundation for TypeScript, C#, Java, and Go SDKs"
+license = "Apache-2.0"
+
+[lib]
+# cdylib  → libaegis.so / libaegis.dylib / aegis.dll  (for runtime linking)
+# staticlib → libaegis.a                               (for embedding)
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+aegis-compiler = { path = "../aegis-compiler" }
+aegis-runtime   = { path = "../aegis-runtime" }
+serde_json      = "1"
+smol_str        = "0.2"
+
+[build-dependencies]
+cbindgen = "0.27"
