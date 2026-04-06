@@ -65,7 +65,7 @@ class TestCallbackHandlerOnToolStart:
         handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({"name": "db_query"}, '{"sql": "SELECT 1"}')
         fields = engine.evaluate.call_args[0][1]
-        assert fields["tool"] == "db_query"
+        assert fields["tool_name"] == "db_query"
         assert fields["arguments"] == '{"sql": "SELECT 1"}'
 
     def test_description_included_in_fields(self):
@@ -83,7 +83,7 @@ class TestCallbackHandlerOnToolStart:
         handler = AutomaGuardCallbackHandler(policy=engine)
         handler.on_tool_start({}, "input")
         fields = engine.evaluate.call_args[0][1]
-        assert fields["tool"] == "unknown"
+        assert fields["tool_name"] == "unknown"
 
 
 # ── on_tool_start: deny ───────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ class TestInterceptToolCall:
 
         my_tool()
         fields = engine.evaluate.call_args[0][1]
-        assert fields["tool"] == "my_tool"
+        assert fields["tool_name"] == "my_tool"
 
     def test_explicit_tool_name_override(self):
         engine = make_mock_engine("allow")
@@ -194,7 +194,7 @@ class TestInterceptToolCall:
 
         fn()
         fields = engine.evaluate.call_args[0][1]
-        assert fields["tool"] == "custom_name"
+        assert fields["tool_name"] == "custom_name"
 
     def test_deny_raises_and_does_not_call_fn(self):
         engine = make_mock_engine("deny", reason="blocked")

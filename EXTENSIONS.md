@@ -8,11 +8,12 @@ wherever AI agents are built.
 
 | SDK | Binding mechanism | Primary framework targets | Priority |
 |-----|-------------------|--------------------------|----------|
-| Rust | Native crate (no FFI) | Any async Rust agent | 1 |
-| TypeScript | napi-rs (Node.js native) | LangChain.js, OpenAI Node, Vercel AI SDK | 2 |
-| C# / .NET | P/Invoke over C FFI | Microsoft Semantic Kernel | 3 |
-| Java / Kotlin | JNI over C FFI | Spring AI, LangChain4j | 4 |
-| Go | cgo over C FFI | Raw SDK (no dominant framework yet) | 5 |
+| Python | pyo3 (maturin) | LangChain, OpenAI Python, raw tool-calling | 1 |
+| Rust | Native crate (no FFI) | Any async Rust agent | 2 |
+| TypeScript | napi-rs (Node.js native) | LangChain.js, OpenAI Node, Vercel AI SDK | 3 |
+| C# / .NET | P/Invoke over C FFI | Microsoft Semantic Kernel | 4 |
+| Java / Kotlin | JNI over C FFI | Spring AI, LangChain4j | 5 |
+| Go | cgo over C FFI | Raw SDK (no dominant framework yet) | 6 |
 
 ---
 

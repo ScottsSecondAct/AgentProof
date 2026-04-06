@@ -180,7 +180,7 @@ class TestGenericProxy:
         proxy.my_tool(key="val")
         args, kwargs = engine.evaluate.call_args
         assert args[0] == "tool_call"
-        assert args[1]["tool"] == "my_tool"
+        assert args[1]["tool_name"] == "my_tool"
 
     def test_evaluate_fields_include_kwargs(self):
         target = MagicMock()
