@@ -1,0 +1,19 @@
+[package]
+name = "aegis-jni"
+version = "0.1.0"
+edition = "2021"
+description = "JNI bridge for the AutomaGuard Java/Kotlin SDK"
+license = "Apache-2.0"
+
+[lib]
+# cdylib → libaegis_jni.so / libaegis_jni.dylib / aegis_jni.dll
+# The Java NativeLoader extracts this from the JAR and loads it at startup.
+crate-type = ["cdylib"]
+name = "aegis_jni"
+
+[dependencies]
+aegis-compiler = { path = "../../aegis-compiler" }
+aegis-runtime   = { path = "../../aegis-runtime" }
+jni             = "0.21"
+serde_json      = "1"
+smol_str        = "0.2"

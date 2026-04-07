@@ -131,8 +131,51 @@ These compile to deterministic state machines at build time. At runtime, the ver
 | Method | Code changes | Best for |
 |--------|-------------|----------|
 | **Python SDK** | One line (`enforce()`) | OpenAI, LangChain, CrewAI agents |
+| **Rust SDK** | One line (`PolicyEngine::from_file`) | Native Rust agents, tokio services |
+| **TypeScript SDK** | One line (`withGuard` / `enforce`) | LangChain.js, OpenAI Node, Vercel AI SDK |
+| **.NET SDK** | One line (`AddAutomaGuard`) | Microsoft Semantic Kernel agents |
 | **MCP Proxy** | Zero (sidecar) | MCP-based agents, zero-touch deployment |
 | **Direct Engine** | Minimal | Custom frameworks, advanced use cases |
+
+## Quick Start — TypeScript
+
+```typescript
+import { PolicyEngine, EnforcementError } from 'automaguard';
+
+const engine = PolicyEngine.fromFile('guard.aegisc');
+
+const result = engine.evaluate('tool_call', {
+  tool_name: 'send_email',
+  arguments: { to: 'user@external.com' },
+});
+
+if (result.verdict === 'deny') {
+  throw new EnforcementError(result.reason);
+}
+```
+
+Or with the Vercel AI SDK:
+
+```typescript
+import { withGuard } from 'automaguard/vercel-ai';
+
+const model = withGuard(openai('gpt-4o'), { policy: 'guard.aegisc' });
+```
+
+## Quick Start — C# / .NET
+
+```csharp
+using AutomaGuard.SemanticKernel;
+using Microsoft.SemanticKernel;
+
+var kernel = Kernel.CreateBuilder()
+    .AddOpenAIChatCompletion("gpt-4o", apiKey)
+    .AddAutomaGuard("guard.aegisc")
+    .Build();
+
+// AutomaGuard intercepts every function call before it executes.
+// EnforcementException is thrown on a Deny verdict.
+```
 
 ## Quick Start — Rust
 
@@ -177,26 +220,33 @@ AutomaGuard/
 ├── aegis-runtime/       # Rust — event evaluation, state machines, rate limits
 ├── aegis-ffi/           # Rust — C ABI layer (cdylib/staticlib + aegis.h)
 ├── automaguard-rs/      # Rust SDK — ergonomic wrapper + async engine
-├── automaguard-python/  # Rust (pyo3) + Python — SDK and framework integrations
-└── examples/            # Example .aegis policy files
+├── automaguard-ts/      # TypeScript SDK — napi-rs; LangChain.js, OpenAI, Vercel AI
+├── automaguard-dotnet/  # C# SDK — P/Invoke + Semantic Kernel IFunctionInvocationFilter
+├── automaguard-java/    # Java/Kotlin SDK — JNI; Spring AI advisor, LangChain4j filter
+├── automaguard-python/  # Python SDK — pyo3/maturin; LangChain, OpenAI integrations
+└── examples/            # Per-SDK runnable examples (python, rust, typescript, dotnet, java)
 ```
 
 ## Integration Options
 
-| Method | Language | Code changes | Best for |
-|--------|----------|-------------|----------|
-| **Python SDK** | Python | One line (`enforce()`) | OpenAI, LangChain, CrewAI agents |
-| **Rust SDK** | Rust | One line (`PolicyEngine::from_file`) | Native Rust agents, tokio services |
-| **C FFI** | Any | Link `libaegis` + include `aegis.h` | TypeScript (napi-rs), C#, Java, Go SDKs |
-| **MCP Proxy** | Zero (sidecar) | Zero (sidecar) | MCP-based agents, zero-touch deployment |
+| SDK | Language | Integration point | Status |
+|-----|----------|-------------------|--------|
+| **automaguard-python** | Python | `enforce(client, policy=...)` — wraps OpenAI/LangChain | ✅ available |
+| **automaguard-rs** | Rust | `PolicyEngine::from_file` / `AsyncPolicyEngine` | ✅ available |
+| **automaguard-ts** | TypeScript / Node.js | `AutomaGuardCallbackHandler`, `enforce()`, `withGuard()` | ✅ available |
+| **automaguard-dotnet** | C# / .NET 8+ | `AddAutomaGuard()` — Semantic Kernel `IFunctionInvocationFilter` | ✅ available |
+| **automaguard-java** | Java / Kotlin | Spring AI advisor, LangChain4j filter (JNI) | ✅ available |
+| **automaguard-go** | Go | `NewEngine` / `engine.Evaluate` (cgo) | ⬜ planned |
+| **MCP Proxy** | Any | Zero-code sidecar interceptor | ⬜ planned |
 
 ## Building from Source
 
 ### Prerequisites
 
 - Rust (stable toolchain)
-- Python 3.9+
-- [maturin](https://github.com/PyO3/maturin) (`pip install maturin`)
+- Python 3.9+ and [maturin](https://github.com/PyO3/maturin) (`pip install maturin`) — for Python SDK
+- Node.js 18+ and npm — for TypeScript SDK
+- .NET 8 SDK — for C# SDK
 
 ### Build
 
@@ -208,14 +258,25 @@ cargo build --release
 cargo build --release --features async -p automaguard
 
 # Python SDK (development mode)
-cd automaguard-python
-maturin develop
+cd automaguard-python && maturin develop
+
+# TypeScript SDK
+cd automaguard-ts && npm install && npm run build
+
+# .NET SDK
+cd automaguard-dotnet && dotnet build
 
 # Run all Rust tests
 cargo test --workspace
 
 # Run Python tests
 cd automaguard-python && pytest
+
+# Run TypeScript tests
+cd automaguard-ts && npm test
+
+# Run .NET tests
+cd automaguard-dotnet && dotnet test
 ```
 
 ### CLI

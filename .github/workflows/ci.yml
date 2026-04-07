@@ -145,6 +145,36 @@ jobs:
       - name: Test
         run: dotnet test AutomaGuard.sln --no-build -c Release --logger "console;verbosity=normal"
 
+  # ── automaguard-java ─────────────────────────────────────────────────────────
+  java-sdk:
+    name: automaguard-java (build / test)
+    runs-on: ubuntu-latest
+    needs: runtime
+    defaults:
+      run:
+        working-directory: automaguard-java
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: automaguard-java/rust
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build Rust JNI library
+        run: cargo build --release
+        working-directory: automaguard-java/rust
+
+      - name: Build and test
+        run: mvn -B -q test -Djava.library.path=rust/target/release
+
   # ── automaguard-ts ────────────────────────────────────────────────────────────
   typescript-sdk:
     name: automaguard-ts (typecheck / test)

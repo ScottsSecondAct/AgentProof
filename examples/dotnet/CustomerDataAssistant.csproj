@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <RootNamespace>AutomaGuard.Example</RootNamespace>
+    <AssemblyName>CustomerDataAssistant</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Semantic Kernel core -->
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.*" />
+    <!-- AutomaGuard Semantic Kernel integration (P/Invoke over aegis-ffi) -->
+    <PackageReference Include="AutomaGuard.SemanticKernel" Version="0.1.*" />
+  </ItemGroup>
+
+</Project>

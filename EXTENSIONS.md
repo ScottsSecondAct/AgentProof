@@ -460,31 +460,33 @@ Go module: `github.com/automaguard/automaguard-go`.
 
 ### Phase 1 — Foundation (prerequisite for all non-Rust SDKs)
 1. ✅ Build `aegis-ffi/` C ABI layer with `cbindgen`-generated header
-2. Set up CI to publish prebuilt `libaegis` binaries per platform (GitHub
+2. ⬜ Set up CI to publish prebuilt `libaegis` binaries per platform (GitHub
    Actions matrix: linux-x64, darwin-arm64, darwin-x64, win32-x64)
 
 ### Phase 2 — Rust SDK
-3. ✅ `automaguard-rs/`: ergonomic wrapper, async engine, publish to crates.io
+3. ✅ `automaguard-rs/`: ergonomic wrapper, async engine, CI (fmt/clippy/test)
 
 ### Phase 3 — TypeScript SDK
-4. `automaguard-ts/`: napi-rs engine binding, core API
-5. LangChain.js, OpenAI Node, Vercel AI SDK integrations
-6. Publish to npm with platform prebuilds
+4. ✅ `automaguard-ts/`: napi-rs engine binding, core API
+5. ✅ LangChain.js, OpenAI Node, Vercel AI SDK integrations
+6. ⬜ Publish to npm with platform prebuilds
 
 ### Phase 4 — C# SDK
-7. `automaguard-dotnet/`: P/Invoke wrapper, `IDisposable` engine
-8. Semantic Kernel `IFunctionFilter` integration
-9. Publish to NuGet
+7. ✅ `automaguard-dotnet/`: P/Invoke wrapper, `IDisposable` engine, CI (build/test)
+8. ✅ Semantic Kernel `IFunctionInvocationFilter` integration
+9. ✅ `examples/dotnet/`: Semantic Kernel example with safe/unsafe scenarios
+10. ⬜ Publish to NuGet
 
 ### Phase 5 — Java SDK
-10. `automaguard-java/`: jni-rs binding, JAR with bundled native library
-11. Spring AI advisor integration
-12. LangChain4j integration
-13. Publish to Maven Central
+11. ✅ `automaguard-java/`: jni-rs binding, JAR with bundled native library, CI (build/test)
+12. ✅ Spring AI `CallAroundAdvisor` integration (wraps `FunctionCallback` pre-execution)
+13. ✅ LangChain4j `ToolProvider` wrapping integration
+14. ✅ `examples/java/`: Spring AI agent example with safe/unsafe scenarios
+15. ⬜ Publish to Maven Central
 
 ### Phase 6 — Go SDK
-14. `automaguard-go/`: cgo bindings, prebuilt native libs per GOOS/GOARCH
-15. Publish Go module
+16. ⬜ `automaguard-go/`: cgo bindings, prebuilt native libs per GOOS/GOARCH
+17. ⬜ Publish Go module
 
 ---
 
@@ -670,47 +672,44 @@ Each SDK example lives under `examples/<sdk>/` and is fully self-contained.
 examples/
 ├── customer_data_guard.aegis       # shared source policy
 ├── customer_data_guard.aegisc      # compiled bytecode (committed)
-├── python/
-│   ├── README.md
+├── demo_all.sh                     # runs every SDK example in sequence
+├── python/          ✅ implemented
 │   ├── requirements.txt
 │   ├── agent.py                    # LangChain + OpenAI agent
 │   ├── prompts.py                  # safe and unsafe prompt pairs
 │   ├── tools.py                    # mock CRM tool implementations
+│   ├── stress.py                   # canned scenario suite (no LLM required)
 │   └── demo.sh
-├── rust/
-│   ├── README.md
+├── rust/            ✅ implemented
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── main.rs                 # async tokio agent
 │   │   ├── tools.rs                # mock tool implementations
 │   │   └── prompts.rs
 │   └── demo.sh
-├── typescript/
-│   ├── README.md
+├── typescript/      ✅ implemented
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── src/
 │   │   ├── agent.ts                # LangChain.js agent
 │   │   ├── tools.ts
-│   │   └── prompts.ts
+│   │   ├── prompts.ts
+│   │   └── stress.ts               # canned scenario suite (no LLM required)
 │   └── demo.sh
-├── dotnet/
-│   ├── README.md
+├── dotnet/          ✅ implemented
 │   ├── CustomerDataAssistant.csproj
 │   ├── Agent.cs                    # Semantic Kernel agent
 │   ├── Tools.cs
 │   ├── Prompts.cs
 │   └── demo.sh
-├── java/
-│   ├── README.md
+├── java/            ✅ implemented
 │   ├── pom.xml
 │   ├── src/main/java/io/automaguard/example/
 │   │   ├── Agent.java              # Spring AI agent
-│   │   ├── Tools.java
+│   │   ├── CustomerDataTools.java
 │   │   └── Prompts.java
 │   └── demo.sh
-└── go/
-    ├── README.md
+└── go/              ⬜ planned (Phase 6)
     ├── go.mod
     ├── main.go                     # CLI agent
     ├── tools.go
