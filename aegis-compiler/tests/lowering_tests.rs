@@ -1326,6 +1326,163 @@ fn next_state_machine_has_four_states() {
     assert_eq!(policies[0].state_machines[0].states.len(), 4);
 }
 
+// ── always(next(ψ)) ───────────────────────────────────────────────────────────
+
+fn always_next(cond: Spanned<Expr>) -> Spanned<Expr> {
+    temporal_always(temporal_next(cond))
+}
+
+fn always_implies_next(trigger: Spanned<Expr>, response: Spanned<Expr>) -> Spanned<Expr> {
+    temporal_always(Spanned::dummy(Expr::Binary {
+        op: Spanned::dummy(BinaryOp::Implies),
+        left: Box::new(trigger),
+        right: Box::new(temporal_next(response)),
+    }))
+}
+
+#[test]
+fn always_next_compiles_without_errors() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+    )]);
+    let (_, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+}
+
+#[test]
+fn always_next_produces_kind_next() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].kind, TemporalKind::Next);
+}
+
+#[test]
+fn always_next_has_three_states() {
+    // initial → checking (loop/violated)
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].states.len(), 3);
+}
+
+#[test]
+fn always_next_initial_state_is_active() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "AN", always_next(bool_expr()))],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    let sm = &policies[0].state_machines[0];
+    assert_eq!(sm.states[sm.initial_state as usize].kind, StateKind::Active);
+}
+
+#[test]
+fn always_next_has_one_violating_state() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member("Proof", "AN", always_next(bool_expr()))],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].violating_states.len(), 1);
+}
+
+// ── always(trigger implies next(ψ)) ──────────────────────────────────────────
+
+#[test]
+fn always_implies_next_compiles_without_errors() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (_, diags) = lower::compile(&prog);
+    assert!(!diags.has_errors());
+}
+
+#[test]
+fn always_implies_next_produces_kind_next() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].kind, TemporalKind::Next);
+}
+
+#[test]
+fn always_implies_next_has_three_states() {
+    // idle → armed → violated (reset arc from armed to idle)
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].states.len(), 3);
+}
+
+#[test]
+fn always_implies_next_initial_state_is_idle() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    let sm = &policies[0].state_machines[0];
+    assert_eq!(sm.states[sm.initial_state as usize].label.as_str(), "idle");
+}
+
+#[test]
+fn always_implies_next_has_four_transitions() {
+    // idle→idle, idle→armed, armed→idle, armed→violated
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    assert_eq!(policies[0].state_machines[0].transitions.len(), 4);
+}
+
+#[test]
+fn always_implies_next_violating_state_is_state_2() {
+    let prog = program(vec![simple_policy(
+        "P",
+        vec![proof_member(
+            "Proof",
+            "Seq",
+            always_implies_next(bool_expr(), bool_expr()),
+        )],
+    )]);
+    let (policies, _) = lower::compile(&prog);
+    let sm = &policies[0].state_machines[0];
+    assert_eq!(sm.violating_states, vec![2]);
+    assert_eq!(sm.states[2].kind, StateKind::Violated);
+}
+
 #[test]
 fn before_invariant_compiles_to_state_machine() {
     let prog = program(vec![simple_policy(

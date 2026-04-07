@@ -836,6 +836,16 @@ fn eventually_in_rule_when_clause_emits_e0202() {
 
 // ── E0203 — Nested temporal operators ────────────────────────────────────────
 
+fn next_expr(cond: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::Next {
+        condition: Box::new(cond),
+    }))
+}
+
+fn implies_expr(left: Spanned<Expr>, right: Spanned<Expr>) -> Spanned<Expr> {
+    binary_expr(BinaryOp::Implies, left, right)
+}
+
 #[test]
 fn nested_always_inside_always_emits_e0203() {
     // always(always(true)) — nested temporal
@@ -844,6 +854,63 @@ fn nested_always_inside_always_emits_e0203() {
     let prog = program(vec![simple_policy(
         "Guard",
         vec![proof_member("P", "I", outer)],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0203);
+}
+
+#[test]
+fn always_next_does_not_emit_e0203() {
+    // always(next(true)) — permitted composite pattern
+    let expr = always_expr(next_expr(bool_expr()));
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(!check(&prog).has_errors(), "always(next(φ)) must not produce errors");
+}
+
+#[test]
+fn always_implies_next_does_not_emit_e0203() {
+    // always(trigger implies next(response)) — the sequencing pattern
+    let trigger = bool_expr();
+    let response = bool_expr();
+    let expr = always_expr(implies_expr(trigger, next_expr(response)));
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(!check(&prog).has_errors(), "always(trigger implies next(ψ)) must not produce errors");
+}
+
+#[test]
+fn next_inside_eventually_emits_e0203() {
+    // eventually(next(true)) — next only allowed inside always
+    let expr = eventually_expr(next_expr(bool_expr()));
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0203);
+}
+
+#[test]
+fn next_inside_never_emits_e0203() {
+    // never(next(true)) — next only allowed inside always
+    let expr = never_expr(next_expr(bool_expr()));
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0203);
+}
+
+#[test]
+fn next_inside_next_emits_e0203() {
+    // next(next(true)) — double nesting not allowed
+    let expr = next_expr(next_expr(bool_expr()));
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
     )]);
     assert_has_code(&check(&prog), DiagnosticCode::E0203);
 }

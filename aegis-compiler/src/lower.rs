@@ -7,6 +7,76 @@ use crate::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use crate::ir::*;
 
 // ═══════════════════════════════════════════════════════════════════════
+//  Helpers
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Returns `true` if `expr` contains a `next(...)` temporal anywhere in
+/// its subtree.  Used by the lowering pass to detect composite patterns
+/// that require special state-machine construction.
+fn expr_contains_next(expr: &Expr) -> bool {
+    match expr {
+        Expr::Temporal(TemporalExpr::Next { .. }) => true,
+        Expr::Temporal(TemporalExpr::Always { condition, .. })
+        | Expr::Temporal(TemporalExpr::Eventually { condition, .. })
+        | Expr::Temporal(TemporalExpr::Never { condition }) => expr_contains_next(&condition.node),
+        Expr::Temporal(TemporalExpr::Until { hold, release }) => {
+            expr_contains_next(&hold.node) || expr_contains_next(&release.node)
+        }
+        Expr::Temporal(TemporalExpr::Before { first, second }) => {
+            expr_contains_next(&first.node) || expr_contains_next(&second.node)
+        }
+        Expr::Temporal(TemporalExpr::After { condition, trigger }) => {
+            expr_contains_next(&condition.node) || expr_contains_next(&trigger.node)
+        }
+        Expr::Binary { left, right, .. } => {
+            expr_contains_next(&left.node) || expr_contains_next(&right.node)
+        }
+        Expr::Unary { operand, .. } => expr_contains_next(&operand.node),
+        Expr::FieldAccess { object, .. } => expr_contains_next(&object.node),
+        Expr::IndexAccess { object, index } => {
+            expr_contains_next(&object.node) || expr_contains_next(&index.node)
+        }
+        Expr::Call { args, .. } => args.iter().any(|a| expr_contains_next(&a.value.node)),
+        Expr::MethodCall { object, args, .. } => {
+            expr_contains_next(&object.node)
+                || args.iter().any(|a| expr_contains_next(&a.value.node))
+        }
+        Expr::Quantifier { collection, predicate, .. } => {
+            expr_contains_next(&collection.node) || expr_contains_next(&predicate.body.node)
+        }
+        Expr::Predicate { subject, argument, .. } => {
+            expr_contains_next(&subject.node) || expr_contains_next(&argument.node)
+        }
+        Expr::Count { collection, filter, .. } => {
+            expr_contains_next(&collection.node)
+                || filter
+                    .as_ref()
+                    .is_some_and(|f| expr_contains_next(&f.body.node))
+        }
+        Expr::Match { scrutinee, arms, .. } => {
+            expr_contains_next(&scrutinee.node)
+                || arms.iter().any(|a| match &a.result.node {
+                    MatchResult::Expr(e) => expr_contains_next(e),
+                    MatchResult::Block(stmts) => stmts.iter().any(|s| match &s.node {
+                        BlockStatement::Expr(e) => expr_contains_next(e),
+                        _ => false,
+                    }),
+                    MatchResult::Verdict(_) => false,
+                })
+        }
+        Expr::Block(stmts) => stmts.iter().any(|s| match &s.node {
+            BlockStatement::Expr(e) => expr_contains_next(e),
+            _ => false,
+        }),
+        Expr::Lambda(lambda) => expr_contains_next(&lambda.body.node),
+        Expr::Object(fields) => fields.iter().any(|f| expr_contains_next(&f.value.node)),
+        Expr::List(elems) => elems.iter().any(|e| expr_contains_next(&e.node)),
+        // Terminals: no nested next possible.
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::Context(_) => false,
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 //  Lowering context — tracks local bindings and generates sequential IDs
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -430,6 +500,56 @@ impl Lowering {
         match expr {
             Expr::Temporal(temporal) => match temporal {
                 TemporalExpr::Always { condition, within } => {
+                    // ── Composite next() patterns ─────────────────────────
+                    //
+                    // `always(next(ψ))` and `always(trigger implies next(ψ))`
+                    // require a composite state machine rather than a flat
+                    // always(φ).  Detect these before the general path.
+
+                    // Case 1: always(next(ψ))
+                    if let Expr::Temporal(TemporalExpr::Next { condition: inner }) =
+                        &condition.node
+                    {
+                        let response = self.lower_expr(&inner.node);
+                        return Some(self.sm_builder.compile_always_next(
+                            proof_name,
+                            invariant_name,
+                            response,
+                        ));
+                    }
+
+                    // Case 2: always(trigger implies next(ψ))
+                    if let Expr::Binary { op, left, right } = &condition.node {
+                        if op.node == BinaryOp::Implies {
+                            if let Expr::Temporal(TemporalExpr::Next { condition: inner }) =
+                                &right.node
+                            {
+                                let trigger = self.lower_expr(&left.node);
+                                let response = self.lower_expr(&inner.node);
+                                return Some(self.sm_builder.compile_always_implies_next(
+                                    proof_name,
+                                    invariant_name,
+                                    trigger,
+                                    response,
+                                ));
+                            }
+                        }
+                    }
+
+                    // Reject other placements of next() inside always().
+                    // (The checker enforces this at the syntax level, but be
+                    // defensive in case lowering is called without checking.)
+                    if expr_contains_next(&condition.node) {
+                        self.diag.emit(Diagnostic::error(
+                            condition.span,
+                            DiagnosticCode::E0203,
+                            "unsupported next() pattern inside always(); \
+                             use always(next(ψ)) or always(trigger implies next(ψ))",
+                        ));
+                        return None;
+                    }
+
+                    // ── General always(φ) path ────────────────────────────
                     let predicate = self.lower_expr(&condition.node);
                     let deadline = within
                         .as_ref()
@@ -475,64 +595,12 @@ impl Lowering {
                 }
 
                 TemporalExpr::Next { condition } => {
-                    // `next(φ)` compiles to a 2-state machine:
-                    //   State 0 (initial): skip one event → State 1
-                    //   State 1 (check): evaluate φ.
-                    //     If φ → Satisfied. If ¬φ → Violated.
+                    // Standalone `next(φ)`: check φ on the very next event,
+                    // then reach a terminal state.  For repeated sequencing
+                    // (e.g. "after every login, the next event must be MFA"),
+                    // use `always(trigger implies next(ψ))` instead.
                     let predicate = self.lower_expr(&condition.node);
-                    let id = self.sm_builder.next_id;
-                    self.sm_builder.next_id += 1;
-                    Some(StateMachine {
-                        id,
-                        name: proof_name,
-                        invariant_name,
-                        kind: TemporalKind::Next,
-                        states: vec![
-                            State {
-                                id: 0,
-                                label: SmolStr::new("initial"),
-                                kind: StateKind::Active,
-                            },
-                            State {
-                                id: 1,
-                                label: SmolStr::new("checking"),
-                                kind: StateKind::Active,
-                            },
-                            State {
-                                id: 2,
-                                label: SmolStr::new("satisfied"),
-                                kind: StateKind::Satisfied,
-                            },
-                            State {
-                                id: 3,
-                                label: SmolStr::new("violated"),
-                                kind: StateKind::Violated,
-                            },
-                        ],
-                        transitions: vec![
-                            // Skip one event
-                            Transition {
-                                from: 0,
-                                to: 1,
-                                guard: TransitionGuard::Always,
-                            },
-                            // Check predicate on the next event
-                            Transition {
-                                from: 1,
-                                to: 2,
-                                guard: TransitionGuard::Predicate(predicate.clone()),
-                            },
-                            Transition {
-                                from: 1,
-                                to: 3,
-                                guard: TransitionGuard::NegatedPredicate(predicate),
-                            },
-                        ],
-                        initial_state: 0,
-                        accepting_states: vec![2],
-                        violating_states: vec![3],
-                        deadline_millis: None,
-                    })
+                    Some(self.sm_builder.compile_next(proof_name, invariant_name, predicate))
                 }
 
                 TemporalExpr::Before { first, second } => {

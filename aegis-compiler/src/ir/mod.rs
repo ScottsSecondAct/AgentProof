@@ -511,6 +511,223 @@ impl StateMachineBuilder {
         }
     }
 
+    /// Compile a standalone `next(φ)` invariant.
+    ///
+    /// Checks φ on the very next event after the machine is created, then
+    /// reaches a terminal state (Satisfied or Violated) and stops monitoring.
+    /// This is a one-shot check — use [`compile_always_implies_next`] for
+    /// repeated sequencing constraints.
+    ///
+    /// ```text
+    /// State 0 (initial) ──Always──▶ State 1 (checking)
+    ///                                  │  Predicate(φ)  ──▶ State 2 (satisfied)
+    ///                                  │  NegPredicate(φ) ──▶ State 3 (violated)
+    /// ```
+    pub fn compile_next(
+        &mut self,
+        name: SmolStr,
+        invariant_name: SmolStr,
+        predicate: IRExpr,
+    ) -> StateMachine {
+        let id = self.next_id();
+        StateMachine {
+            id,
+            name,
+            invariant_name,
+            kind: TemporalKind::Next,
+            states: vec![
+                State {
+                    id: 0,
+                    label: SmolStr::new("initial"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 1,
+                    label: SmolStr::new("checking"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 2,
+                    label: SmolStr::new("satisfied"),
+                    kind: StateKind::Satisfied,
+                },
+                State {
+                    id: 3,
+                    label: SmolStr::new("violated"),
+                    kind: StateKind::Violated,
+                },
+            ],
+            transitions: vec![
+                Transition {
+                    from: 0,
+                    to: 1,
+                    guard: TransitionGuard::Always,
+                },
+                Transition {
+                    from: 1,
+                    to: 2,
+                    guard: TransitionGuard::Predicate(predicate.clone()),
+                },
+                Transition {
+                    from: 1,
+                    to: 3,
+                    guard: TransitionGuard::NegatedPredicate(predicate),
+                },
+            ],
+            initial_state: 0,
+            accepting_states: vec![2],
+            violating_states: vec![3],
+            deadline_millis: None,
+        }
+    }
+
+    /// Compile `always(next(ψ))` — φ must hold at every event starting from
+    /// the second one.
+    ///
+    /// Semantically equivalent to `always(ψ)` with the first event skipped.
+    /// Unlike the standalone `next(ψ)`, this machine loops back and keeps
+    /// enforcing ψ on every subsequent event.
+    ///
+    /// ```text
+    /// State 0 (initial) ──Always──▶ State 1 (checking)
+    ///                                  │  Predicate(ψ) ──▶ self-loop
+    ///                                  │  NegPredicate(ψ) ──▶ State 2 (violated)
+    /// ```
+    pub fn compile_always_next(
+        &mut self,
+        name: SmolStr,
+        invariant_name: SmolStr,
+        response: IRExpr,
+    ) -> StateMachine {
+        let id = self.next_id();
+        StateMachine {
+            id,
+            name,
+            invariant_name,
+            kind: TemporalKind::Next,
+            states: vec![
+                State {
+                    id: 0,
+                    label: SmolStr::new("initial"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 1,
+                    label: SmolStr::new("checking"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 2,
+                    label: SmolStr::new("violated"),
+                    kind: StateKind::Violated,
+                },
+            ],
+            transitions: vec![
+                // Skip the first event; begin checking from the second.
+                Transition {
+                    from: 0,
+                    to: 1,
+                    guard: TransitionGuard::Always,
+                },
+                // ψ holds — keep checking.
+                Transition {
+                    from: 1,
+                    to: 1,
+                    guard: TransitionGuard::Predicate(response.clone()),
+                },
+                // ψ fails — violated.
+                Transition {
+                    from: 1,
+                    to: 2,
+                    guard: TransitionGuard::NegatedPredicate(response),
+                },
+            ],
+            initial_state: 0,
+            accepting_states: vec![1],
+            violating_states: vec![2],
+            deadline_millis: None,
+        }
+    }
+
+    /// Compile `always(trigger implies next(ψ))` — whenever `trigger` holds,
+    /// the very next event must satisfy `ψ`.
+    ///
+    /// This is the primary use-case for `next()`: expressing sequencing
+    /// constraints such as "after every login attempt, the next event must be
+    /// an MFA verification."  The machine is reset to idle after each
+    /// successful response, so the constraint applies to every occurrence of
+    /// the trigger, not just the first.
+    ///
+    /// ```text
+    /// State 0 (idle) ──NegPred(trigger)──▶ self-loop
+    ///               ──Predicate(trigger)──▶ State 1 (armed)
+    ///
+    /// State 1 (armed) ──Predicate(ψ)──▶ State 0  (response ok, reset)
+    ///                 ──NegPredicate(ψ)──▶ State 2 (violated)
+    /// ```
+    pub fn compile_always_implies_next(
+        &mut self,
+        name: SmolStr,
+        invariant_name: SmolStr,
+        trigger: IRExpr,
+        response: IRExpr,
+    ) -> StateMachine {
+        let id = self.next_id();
+        StateMachine {
+            id,
+            name,
+            invariant_name,
+            kind: TemporalKind::Next,
+            states: vec![
+                State {
+                    id: 0,
+                    label: SmolStr::new("idle"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 1,
+                    label: SmolStr::new("armed"),
+                    kind: StateKind::Active,
+                },
+                State {
+                    id: 2,
+                    label: SmolStr::new("violated"),
+                    kind: StateKind::Violated,
+                },
+            ],
+            transitions: vec![
+                // Idle: no trigger — stay idle.
+                Transition {
+                    from: 0,
+                    to: 0,
+                    guard: TransitionGuard::NegatedPredicate(trigger.clone()),
+                },
+                // Idle: trigger fired — arm the machine.
+                Transition {
+                    from: 0,
+                    to: 1,
+                    guard: TransitionGuard::Predicate(trigger),
+                },
+                // Armed: response satisfied — reset to idle.
+                Transition {
+                    from: 1,
+                    to: 0,
+                    guard: TransitionGuard::Predicate(response.clone()),
+                },
+                // Armed: response failed — violated.
+                Transition {
+                    from: 1,
+                    to: 2,
+                    guard: TransitionGuard::NegatedPredicate(response),
+                },
+            ],
+            initial_state: 0,
+            accepting_states: vec![0],
+            violating_states: vec![2],
+            deadline_millis: None,
+        }
+    }
+
     fn next_id(&mut self) -> u32 {
         let id = self.next_id;
         self.next_id += 1;

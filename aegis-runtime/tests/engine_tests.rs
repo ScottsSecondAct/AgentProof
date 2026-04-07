@@ -531,3 +531,207 @@ fn reset_clears_rate_limiter_state() {
     ev2.timestamp_ms = 2000;
     assert_eq!(engine.evaluate(&ev2).verdict, Verdict::Allow);
 }
+
+// ── next(φ) — standalone ──────────────────────────────────────────────────────
+
+fn next_policy(predicate: IRExpr) -> CompiledPolicy {
+    let mut p = empty_policy("NextTest");
+    let sm = StateMachineBuilder::new().compile_next(s("P"), s("I"), predicate);
+    p.state_machines.push(sm);
+    p
+}
+
+/// `event.flag == true`
+fn flag_true_predicate() -> IRExpr {
+    use aegis_compiler::ast::BinaryOp;
+    IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("flag")] })),
+        right: Box::new(IRExpr::Literal(Literal::Bool(true))),
+    }
+}
+
+fn flag_event(flag: bool) -> Event {
+    Event::new("ev").with_field("flag", Value::Bool(flag))
+}
+
+#[test]
+fn next_first_event_is_allowed_regardless_of_predicate() {
+    // The first event skips the check (state 0 → 1 via Always).
+    let mut engine = PolicyEngine::new(next_policy(flag_true_predicate()));
+    assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Allow);
+}
+
+#[test]
+fn next_second_event_allowed_when_predicate_holds() {
+    let mut engine = PolicyEngine::new(next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    assert_eq!(engine.evaluate(&flag_event(true)).verdict, Verdict::Allow);
+}
+
+#[test]
+fn next_second_event_denied_when_predicate_fails() {
+    let mut engine = PolicyEngine::new(next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Deny);
+}
+
+#[test]
+fn next_violation_persists_after_second_event() {
+    // Once violated, every subsequent event is denied.
+    let mut engine = PolicyEngine::new(next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    engine.evaluate(&flag_event(false)); // violate
+    assert_eq!(engine.evaluate(&flag_event(true)).verdict, Verdict::Deny);
+}
+
+// ── always(next(ψ)) ───────────────────────────────────────────────────────────
+
+fn always_next_policy(predicate: IRExpr) -> CompiledPolicy {
+    let mut p = empty_policy("AlwaysNext");
+    let sm = StateMachineBuilder::new().compile_always_next(s("P"), s("I"), predicate);
+    p.state_machines.push(sm);
+    p
+}
+
+#[test]
+fn always_next_first_event_always_allowed() {
+    let mut engine = PolicyEngine::new(always_next_policy(flag_true_predicate()));
+    assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Allow);
+}
+
+#[test]
+fn always_next_subsequent_event_allowed_when_predicate_holds() {
+    let mut engine = PolicyEngine::new(always_next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    assert_eq!(engine.evaluate(&flag_event(true)).verdict, Verdict::Allow);
+}
+
+#[test]
+fn always_next_subsequent_event_denied_when_predicate_fails() {
+    let mut engine = PolicyEngine::new(always_next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Deny);
+}
+
+#[test]
+fn always_next_keeps_checking_after_success() {
+    // After a successful check, the machine loops back and keeps enforcing.
+    let mut engine = PolicyEngine::new(always_next_policy(flag_true_predicate()));
+    engine.evaluate(&flag_event(false)); // skip
+    engine.evaluate(&flag_event(true));  // ok
+    engine.evaluate(&flag_event(true));  // ok
+    assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Deny);
+}
+
+// ── always(trigger implies next(ψ)) ──────────────────────────────────────────
+
+fn always_implies_next_policy(trigger: IRExpr, response: IRExpr) -> CompiledPolicy {
+    let mut p = empty_policy("AlwaysImpliesNext");
+    let sm = StateMachineBuilder::new()
+        .compile_always_implies_next(s("P"), s("I"), trigger, response);
+    p.state_machines.push(sm);
+    p
+}
+
+/// `event.kind == "login"`
+fn login_predicate() -> IRExpr {
+    use aegis_compiler::ast::BinaryOp;
+    IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("kind")] })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("login")))),
+    }
+}
+
+/// `event.kind == "mfa"`
+fn mfa_predicate() -> IRExpr {
+    use aegis_compiler::ast::BinaryOp;
+    IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("kind")] })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("mfa")))),
+    }
+}
+
+fn kind_event(kind: &str) -> Event {
+    Event::new("ev").with_field("kind", Value::String(s(kind)))
+}
+
+#[test]
+fn always_implies_next_no_trigger_always_allows() {
+    // Trigger never fires: machine stays idle, all events allowed.
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
+}
+
+#[test]
+fn always_implies_next_trigger_then_valid_response_allows() {
+    // login → mfa: should allow both events.
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    engine.evaluate(&kind_event("login")); // trigger: idle → armed
+    assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Allow); // armed → idle
+}
+
+#[test]
+fn always_implies_next_trigger_then_wrong_response_denies() {
+    // login → other (not mfa): should deny.
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    engine.evaluate(&kind_event("login")); // idle → armed
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
+}
+
+#[test]
+fn always_implies_next_resets_after_valid_response() {
+    // After a valid response, the machine resets to idle and monitors again.
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    engine.evaluate(&kind_event("login")); // armed
+    engine.evaluate(&kind_event("mfa"));  // reset to idle
+    // Second occurrence: login again
+    engine.evaluate(&kind_event("login")); // armed again
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
+}
+
+#[test]
+fn always_implies_next_violation_is_permanent() {
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    engine.evaluate(&kind_event("login")); // armed
+    engine.evaluate(&kind_event("other")); // violated
+    // All subsequent events denied.
+    assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Deny);
+    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
+}
+
+#[test]
+fn always_implies_next_trigger_then_correct_response_resets_and_allows_again() {
+    // Three full login→mfa cycles, all allowed.
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    for _ in 0..3 {
+        engine.evaluate(&kind_event("login"));
+        assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Allow);
+    }
+}
+
+#[test]
+fn always_implies_next_violation_reported_in_violations_vec() {
+    let mut engine = PolicyEngine::new(
+        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    );
+    engine.evaluate(&kind_event("login")); // armed
+    let result = engine.evaluate(&kind_event("other")); // violate
+    assert!(!result.violations.is_empty());
+}

@@ -13,8 +13,12 @@ struct CheckContext {
     in_rule: bool,
     /// Are we inside a policy? `context` expressions valid here.
     in_policy: bool,
-    /// Nesting depth of temporal operators (v1: max 1).
+    /// Nesting depth of temporal operators.
     temporal_depth: u32,
+    /// True when visiting the condition body of an `always(...)` expression.
+    /// `next(φ)` is the only temporal operator permitted at depth 1 in this
+    /// position — it compiles to a composite "trigger–response" state machine.
+    inside_always: bool,
 }
 
 impl CheckContext {
@@ -24,6 +28,7 @@ impl CheckContext {
             in_rule: false,
             in_policy: false,
             temporal_depth: 0,
+            inside_always: false,
         }
     }
 }
@@ -877,17 +882,28 @@ impl TypeChecker {
         }
 
         if ctx.temporal_depth > 0 {
-            self.diag.emit(Diagnostic::error(
-                span,
-                DiagnosticCode::E0203,
-                "nested temporal operators are not supported in v1; \
-                 decompose into separate invariants",
-            ));
-            // Continue checking for better error messages
+            // `next(φ)` is the one exception: it may appear at depth 1
+            // inside `always(...)` to express "trigger implies next response"
+            // sequencing patterns.  All other nested temporals are rejected.
+            let is_permitted_next =
+                matches!(temporal, TemporalExpr::Next { .. }) && ctx.inside_always;
+            if !is_permitted_next {
+                self.diag.emit(Diagnostic::error(
+                    span,
+                    DiagnosticCode::E0203,
+                    "nested temporal operators are not supported; \
+                     only next() may be nested directly inside always()",
+                ));
+            }
+            // Continue checking inner expressions for better error coverage.
         }
 
+        // Propagate always-nesting flag: true only when entering an `always`
+        // body, so deeper nesting (next inside next, etc.) is still rejected.
+        let inside_always_condition = matches!(temporal, TemporalExpr::Always { .. });
         let inner_ctx = CheckContext {
             temporal_depth: ctx.temporal_depth + 1,
+            inside_always: inside_always_condition,
             ..ctx
         };
 
@@ -895,7 +911,12 @@ impl TypeChecker {
             TemporalExpr::Always { condition, within }
             | TemporalExpr::Eventually { condition, within } => {
                 let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
-                if !cond_ty.is_bool() && !cond_ty.is_error() {
+                // Accept bool OR Temporal (Temporal arises from nested next()
+                // inside always(), which is the permitted sequencing pattern).
+                let is_proposition = cond_ty.is_bool()
+                    || matches!(cond_ty, Ty::Temporal)
+                    || cond_ty.is_error();
+                if !is_proposition {
                     let op = if matches!(temporal, TemporalExpr::Always { .. }) {
                         "always"
                     } else {
@@ -1040,7 +1061,11 @@ impl TypeChecker {
 
             // Logical: both bool, result is bool
             BinaryOp::And | BinaryOp::Or | BinaryOp::Implies => {
-                if !left.is_bool() || !right.is_bool() {
+                // `Ty::Temporal` is treated as a proposition: `next(φ)` has
+                // type Temporal, so `trigger implies next(φ)` is well-typed.
+                // If either operand is temporal, the result is temporal.
+                let is_prop = |ty: &Ty| ty.is_bool() || matches!(ty, Ty::Temporal) || ty.is_error();
+                if !is_prop(left) || !is_prop(right) {
                     self.diag.emit(Diagnostic::error(
                         span,
                         DiagnosticCode::E0106,
@@ -1050,7 +1075,11 @@ impl TypeChecker {
                     ));
                     return Ty::Error;
                 }
-                Ty::Primitive(PrimitiveType::Bool)
+                if matches!(left, Ty::Temporal) || matches!(right, Ty::Temporal) {
+                    Ty::Temporal
+                } else {
+                    Ty::Primitive(PrimitiveType::Bool)
+                }
             }
 
             // Membership: element in collection
