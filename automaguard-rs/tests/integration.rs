@@ -11,8 +11,8 @@ use smol_str::SmolStr;
 use aegis_compiler::ast::{BinaryOp, ConstraintKind, Literal, SeverityLevel, Verdict};
 use aegis_compiler::bytecode;
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata,
-    RefPath, RefRoot, StateMachineBuilder,
+    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata, RefPath,
+    RefRoot, StateMachineBuilder,
 };
 use aegis_runtime::event::Value;
 
@@ -100,12 +100,7 @@ fn always_sm_policy() -> CompiledPolicy {
         right: Box::new(IRExpr::Literal(Literal::String(s("exec")))),
     };
 
-    let sm = StateMachineBuilder::new().compile_always(
-        s("Safety"),
-        s("NoExec"),
-        predicate,
-        None,
-    );
+    let sm = StateMachineBuilder::new().compile_always(s("Safety"), s("NoExec"), predicate, None);
 
     CompiledPolicy {
         name: s("AlwaysNoExec"),
@@ -268,8 +263,16 @@ fn event_count_increments() {
     let mut engine = PolicyEngine::from_bytes(&bytes).unwrap();
     assert_eq!(engine.event_count(), 0);
 
-    engine.event("tool_call").field("tool_name", "search").evaluate().unwrap();
-    engine.event("tool_call").field("tool_name", "search").evaluate().unwrap();
+    engine
+        .event("tool_call")
+        .field("tool_name", "search")
+        .evaluate()
+        .unwrap();
+    engine
+        .event("tool_call")
+        .field("tool_name", "search")
+        .evaluate()
+        .unwrap();
 
     assert_eq!(engine.event_count(), 2);
 }
@@ -279,7 +282,11 @@ fn reset_clears_event_count() {
     let bytes = to_aegisc(&deny_exec_policy());
     let mut engine = PolicyEngine::from_bytes(&bytes).unwrap();
 
-    engine.event("tool_call").field("tool_name", "search").evaluate().unwrap();
+    engine
+        .event("tool_call")
+        .field("tool_name", "search")
+        .evaluate()
+        .unwrap();
     assert_eq!(engine.event_count(), 1);
 
     engine.reset();
@@ -353,7 +360,11 @@ fn always_sm_denies_on_violation() {
 
     // Three clean events followed by a violation.
     for _ in 0..3 {
-        engine.event("tool_call").field("tool_name", "search").evaluate().unwrap();
+        engine
+            .event("tool_call")
+            .field("tool_name", "search")
+            .evaluate()
+            .unwrap();
     }
 
     let r = engine
@@ -372,10 +383,18 @@ fn state_machine_remains_violated_after_first_violation() {
     let mut engine = PolicyEngine::from_bytes(&bytes).unwrap();
 
     // Trigger the violation.
-    engine.event("tool_call").field("tool_name", "exec").evaluate().unwrap();
+    engine
+        .event("tool_call")
+        .field("tool_name", "exec")
+        .evaluate()
+        .unwrap();
 
     // Even a harmless event afterwards must still deny (absorbing state).
-    let r = engine.event("tool_call").field("tool_name", "search").evaluate().unwrap();
+    let r = engine
+        .event("tool_call")
+        .field("tool_name", "search")
+        .evaluate()
+        .unwrap();
     assert!(r.is_denied(), "violated SM stays denied");
 }
 
@@ -431,7 +450,9 @@ mod async_tests {
         let e2 = engine.clone();
 
         let (r1, r2) = tokio::join!(
-            e1.event("tool_call").field("tool_name", "search").evaluate(),
+            e1.event("tool_call")
+                .field("tool_name", "search")
+                .evaluate(),
             e2.event("tool_call").field("tool_name", "exec").evaluate(),
         );
 
@@ -444,8 +465,18 @@ mod async_tests {
         let bytes = to_aegisc(&deny_exec_policy());
         let engine = AsyncPolicyEngine::from_bytes(&bytes).unwrap();
 
-        engine.event("tool_call").field("tool_name", "search").evaluate().await.unwrap();
-        engine.event("tool_call").field("tool_name", "search").evaluate().await.unwrap();
+        engine
+            .event("tool_call")
+            .field("tool_name", "search")
+            .evaluate()
+            .await
+            .unwrap();
+        engine
+            .event("tool_call")
+            .field("tool_name", "search")
+            .evaluate()
+            .await
+            .unwrap();
 
         assert_eq!(engine.event_count(), 2);
     }
