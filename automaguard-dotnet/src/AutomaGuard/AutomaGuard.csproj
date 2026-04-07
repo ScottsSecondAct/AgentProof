@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>AutomaGuard</RootNamespace>
+    <AssemblyName>AutomaGuard</AssemblyName>
+    <Version>0.1.0</Version>
+    <Description>AutomaGuard policy enforcement SDK for .NET — compiled temporal policy verification for production AI agents.</Description>
+    <PackageId>AutomaGuard</PackageId>
+    <Authors>AutomaGuard Contributors</Authors>
+    <PackageTags>ai;policy;enforcement;safety;agents;llm</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Make internals visible to test projects -->
+    <InternalsVisibleTo Include="AutomaGuard.Tests" />
+    <InternalsVisibleTo Include="AutomaGuard.SemanticKernel.Tests" />
+  </ItemGroup>
+
+  <!-- Prebuilt native binaries, included as content and copied to output -->
+  <ItemGroup>
+    <Content Include="..\..\native\linux-x64\libaegis.so"
+             Condition="Exists('..\..\native\linux-x64\libaegis.so')"
+             CopyToOutputDirectory="PreserveNewest"
+             PackagePath="runtimes/linux-x64/native/" />
+    <Content Include="..\..\native\osx-arm64\libaegis.dylib"
+             Condition="Exists('..\..\native\osx-arm64\libaegis.dylib')"
+             CopyToOutputDirectory="PreserveNewest"
+             PackagePath="runtimes/osx-arm64/native/" />
+    <Content Include="..\..\native\win-x64\aegis.dll"
+             Condition="Exists('..\..\native\win-x64\aegis.dll')"
+             CopyToOutputDirectory="PreserveNewest"
+             PackagePath="runtimes/win-x64/native/" />
+  </ItemGroup>
+
+</Project>

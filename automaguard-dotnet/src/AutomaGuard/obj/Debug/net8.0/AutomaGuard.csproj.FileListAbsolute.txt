@@ -1,0 +1,12 @@
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/bin/Debug/net8.0/AutomaGuard.deps.json
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/bin/Debug/net8.0/AutomaGuard.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/bin/Debug/net8.0/AutomaGuard.pdb
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.GeneratedMSBuildEditorConfig.editorconfig
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.AssemblyInfoInputs.cache
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.AssemblyInfo.cs
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.csproj.CoreCompileInputs.cache
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.sourcelink.json
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/refint/AutomaGuard.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/AutomaGuard.pdb
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/Debug/net8.0/ref/AutomaGuard.dll

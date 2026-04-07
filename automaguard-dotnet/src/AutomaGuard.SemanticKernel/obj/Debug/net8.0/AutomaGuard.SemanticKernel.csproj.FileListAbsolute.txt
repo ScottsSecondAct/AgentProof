@@ -1,0 +1,16 @@
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.csproj.AssemblyReference.cache
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.GeneratedMSBuildEditorConfig.editorconfig
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.AssemblyInfoInputs.cache
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.AssemblyInfo.cs
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.csproj.CoreCompileInputs.cache
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.sourcelink.json
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/bin/Debug/net8.0/AutomaGuard.SemanticKernel.deps.json
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/bin/Debug/net8.0/AutomaGuard.SemanticKernel.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/bin/Debug/net8.0/AutomaGuard.SemanticKernel.pdb
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/bin/Debug/net8.0/AutomaGuard.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/bin/Debug/net8.0/AutomaGuard.pdb
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGu.F3B70539.Up2Date
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/refint/AutomaGuard.SemanticKernel.dll
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/AutomaGuard.SemanticKernel.pdb
+/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/Debug/net8.0/ref/AutomaGuard.SemanticKernel.dll

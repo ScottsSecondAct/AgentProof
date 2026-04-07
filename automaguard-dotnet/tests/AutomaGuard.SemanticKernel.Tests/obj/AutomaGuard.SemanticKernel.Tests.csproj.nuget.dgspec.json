@@ -1,0 +1,255 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/scott/Projects/AutomaGuard/automaguard-dotnet/tests/AutomaGuard.SemanticKernel.Tests/AutomaGuard.SemanticKernel.Tests.csproj": {}
+  },
+  "projects": {
+    "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/AutomaGuard.SemanticKernel.csproj": {
+      "version": "0.1.0",
+      "restore": {
+        "projectUniqueName": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/AutomaGuard.SemanticKernel.csproj",
+        "projectName": "AutomaGuard.SemanticKernel",
+        "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/AutomaGuard.SemanticKernel.csproj",
+        "packagesPath": "/home/scott/.nuget/packages/",
+        "outputPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/scott/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj": {
+                "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.SemanticKernel": {
+              "target": "Package",
+              "version": "[1.*, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.114/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj": {
+      "version": "0.1.0",
+      "restore": {
+        "projectUniqueName": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj",
+        "projectName": "AutomaGuard",
+        "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj",
+        "packagesPath": "/home/scott/.nuget/packages/",
+        "outputPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/scott/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.114/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/scott/Projects/AutomaGuard/automaguard-dotnet/tests/AutomaGuard.SemanticKernel.Tests/AutomaGuard.SemanticKernel.Tests.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/tests/AutomaGuard.SemanticKernel.Tests/AutomaGuard.SemanticKernel.Tests.csproj",
+        "projectName": "AutomaGuard.SemanticKernel.Tests",
+        "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/tests/AutomaGuard.SemanticKernel.Tests/AutomaGuard.SemanticKernel.Tests.csproj",
+        "packagesPath": "/home/scott/.nuget/packages/",
+        "outputPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/tests/AutomaGuard.SemanticKernel.Tests/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/scott/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/AutomaGuard.SemanticKernel.csproj": {
+                "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard.SemanticKernel/AutomaGuard.SemanticKernel.csproj"
+              },
+              "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj": {
+                "projectPath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[17.*, )"
+            },
+            "Microsoft.SemanticKernel": {
+              "target": "Package",
+              "version": "[1.*, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.*, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.*, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.114/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

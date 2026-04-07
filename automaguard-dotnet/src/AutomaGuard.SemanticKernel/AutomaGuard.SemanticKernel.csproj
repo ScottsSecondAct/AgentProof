@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>AutomaGuard.SemanticKernel</RootNamespace>
+    <AssemblyName>AutomaGuard.SemanticKernel</AssemblyName>
+    <Version>0.1.0</Version>
+    <Description>AutomaGuard Microsoft Semantic Kernel integration — policy enforcement via IFunctionInvocationFilter.</Description>
+    <PackageId>AutomaGuard.SemanticKernel</PackageId>
+    <Authors>AutomaGuard Contributors</Authors>
+    <PackageTags>ai;policy;enforcement;safety;agents;semantic-kernel;microsoft</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutomaGuard\AutomaGuard.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AutomaGuard.SemanticKernel.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.*" />
+  </ItemGroup>
+
+</Project>

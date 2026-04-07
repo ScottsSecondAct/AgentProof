@@ -122,6 +122,29 @@ jobs:
         working-directory: automaguard-python
         run: maturin build
 
+  # ── automaguard-dotnet ────────────────────────────────────────────────────────
+  dotnet-sdk:
+    name: automaguard-dotnet (build / test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: automaguard-dotnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore AutomaGuard.sln
+
+      - name: Build
+        run: dotnet build AutomaGuard.sln --no-restore -c Release
+
+      - name: Test
+        run: dotnet test AutomaGuard.sln --no-build -c Release --logger "console;verbosity=normal"
+
   # ── automaguard-ts ────────────────────────────────────────────────────────────
   typescript-sdk:
     name: automaguard-ts (typecheck / test)

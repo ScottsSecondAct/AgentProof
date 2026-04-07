@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "SlO9a39ckwY=",
+  "success": true,
+  "projectFilePath": "/home/scott/Projects/AutomaGuard/automaguard-dotnet/src/AutomaGuard/AutomaGuard.csproj",
+  "expectedPackageFiles": [
+    "/home/scott/.nuget/packages/microsoft.netcore.app.ref/8.0.24/microsoft.netcore.app.ref.8.0.24.nupkg.sha512",
+    "/home/scott/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.24/microsoft.aspnetcore.app.ref.8.0.24.nupkg.sha512"
+  ],
+  "logs": []
+}
