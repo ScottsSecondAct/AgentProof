@@ -493,4 +493,109 @@ mod tests {
         assert!(pretty.contains('\n'));
         assert!(pretty.len() > compact.len());
     }
+
+    // ── File I/O ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn write_file_creates_a_readable_file() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_write_file.aegisc");
+        let policy = minimal_policy();
+        let bytes_written = write_file(&path, &policy).unwrap();
+        assert!(path.exists(), "file should have been created");
+        assert!(bytes_written > 12, "should have written header + payload");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn read_file_round_trips_policy() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_read_file.aegisc");
+        let policy = minimal_policy();
+        write_file(&path, &policy).unwrap();
+        let restored = read_file(&path).unwrap();
+        assert_eq!(restored.name, policy.name);
+        assert_eq!(restored.severity, policy.severity);
+        assert_eq!(restored.metadata.source_hash, policy.metadata.source_hash);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn read_file_preserves_state_machines() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_read_file_sm.aegisc");
+        let mut policy = minimal_policy();
+        let sm = StateMachineBuilder::new().compile_always(
+            SmolStr::new("TestSM"),
+            SmolStr::new("Inv"),
+            IRExpr::Literal(Literal::Bool(true)),
+            None,
+        );
+        policy.state_machines.push(sm);
+        write_file(&path, &policy).unwrap();
+        let restored = read_file(&path).unwrap();
+        assert_eq!(restored.state_machines.len(), 1);
+        assert_eq!(restored.state_machines[0].name.as_str(), "TestSM");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn write_file_returns_byte_count_matching_file_size() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_bytecount.aegisc");
+        let policy = minimal_policy();
+        let bytes_written = write_file(&path, &policy).unwrap();
+        let file_size = std::fs::metadata(&path).unwrap().len() as usize;
+        assert_eq!(bytes_written, file_size);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn read_file_missing_path_returns_io_error() {
+        let path = std::path::Path::new("/tmp/automaguard_definitely_missing_file.aegisc");
+        assert!(matches!(read_file(path), Err(BytecodeError::Io(_))));
+    }
+
+    #[test]
+    fn read_file_corrupt_magic_returns_invalid_magic_error() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_corrupt_magic.aegisc");
+        let mut bytes = to_bytecode(&minimal_policy()).unwrap();
+        bytes[0] = 0x00; // corrupt first magic byte
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(matches!(read_file(&path), Err(BytecodeError::InvalidMagic)));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn inspect_header_returns_valid_info_for_good_file() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_inspect.aegisc");
+        let policy = minimal_policy();
+        write_file(&path, &policy).unwrap();
+        let info = inspect_header(&path).unwrap();
+        assert!(info.valid_magic, "magic should be valid");
+        assert_eq!(info.version, 1);
+        assert_eq!(info.flags, 0);
+        assert!(info.payload_len > 0);
+        assert!(info.file_size > 12);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn inspect_header_missing_file_returns_io_error() {
+        let path = std::path::Path::new("/tmp/automaguard_missing_inspect.aegisc");
+        assert!(matches!(inspect_header(path), Err(BytecodeError::Io(_))));
+    }
+
+    #[test]
+    fn inspect_header_file_size_matches_write() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("automaguard_test_inspect_size.aegisc");
+        let policy = minimal_policy();
+        let bytes_written = write_file(&path, &policy).unwrap();
+        let info = inspect_header(&path).unwrap();
+        assert_eq!(info.file_size as usize, bytes_written);
+        let _ = std::fs::remove_file(&path);
+    }
 }

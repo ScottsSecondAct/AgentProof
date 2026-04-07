@@ -735,3 +735,200 @@ fn always_implies_next_violation_reported_in_violations_vec() {
     let result = engine.evaluate(&kind_event("other")); // violate
     assert!(!result.violations.is_empty());
 }
+
+// ── set_context / set_config ──────────────────────────────────────────────────
+
+/// Rule: deny if `context.block == "yes"` (string equality).
+fn context_block_rule() -> CompiledRule {
+    use aegis_compiler::ast::BinaryOp;
+    let cond = IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Context,
+            fields: vec![s("block")],
+        })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("yes")))),
+    };
+    CompiledRule {
+        id: 0,
+        on_events: vec![s("tool_call")],
+        condition: Some(cond),
+        verdicts: vec![IRVerdict { verdict: Verdict::Deny, message: None }],
+        actions: vec![],
+        severity: None,
+    }
+}
+
+/// Rule: deny if `policy.env == "prod"`.
+fn policy_env_rule() -> CompiledRule {
+    use aegis_compiler::ast::BinaryOp;
+    let cond = IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Policy,
+            fields: vec![s("env")],
+        })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("prod")))),
+    };
+    CompiledRule {
+        id: 0,
+        on_events: vec![s("tool_call")],
+        condition: Some(cond),
+        verdicts: vec![IRVerdict { verdict: Verdict::Deny, message: None }],
+        actions: vec![],
+        severity: None,
+    }
+}
+
+#[test]
+fn set_context_value_visible_in_rule_condition() {
+    let mut engine = PolicyEngine::new(policy_with_rule(context_block_rule()));
+    // Before setting context: rule condition is false → allow.
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Allow);
+    // After setting context.block = "yes": rule fires → deny.
+    engine.set_context("block", Value::String(s("yes")));
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+}
+
+#[test]
+fn set_context_persists_across_events() {
+    let mut engine = PolicyEngine::new(policy_with_rule(context_block_rule()));
+    engine.set_context("block", Value::String(s("yes")));
+    // Context persists across multiple evaluations.
+    for _ in 0..3 {
+        assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+    }
+}
+
+#[test]
+fn set_context_can_be_overridden() {
+    let mut engine = PolicyEngine::new(policy_with_rule(context_block_rule()));
+    engine.set_context("block", Value::String(s("yes")));
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+    // Override with a non-matching value.
+    engine.set_context("block", Value::String(s("no")));
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Allow);
+}
+
+#[test]
+fn set_config_value_visible_in_policy_rule_condition() {
+    let mut engine = PolicyEngine::new(policy_with_rule(policy_env_rule()));
+    // Before setting config: policy.env is missing → allow.
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Allow);
+    // After setting policy env = "prod": rule fires → deny.
+    engine.set_config("env", Value::String(s("prod")));
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+}
+
+#[test]
+fn set_config_persists_across_events() {
+    let mut engine = PolicyEngine::new(policy_with_rule(policy_env_rule()));
+    engine.set_config("env", Value::String(s("prod")));
+    for _ in 0..3 {
+        assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+    }
+}
+
+#[test]
+fn reset_does_not_clear_context_or_config() {
+    // reset() clears state machines and rate limiters but context/config should persist.
+    let mut engine = PolicyEngine::new(policy_with_rule(context_block_rule()));
+    engine.set_context("block", Value::String(s("yes")));
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+    engine.reset();
+    // Context should still be set after reset.
+    assert_eq!(engine.evaluate(&tool_call("x")).verdict, Verdict::Deny);
+}
+
+// ── State machine: until ──────────────────────────────────────────────────────
+
+/// Build an `until(hold, release)` state machine with literal predicates.
+fn until_sm(hold: bool, release: bool) -> aegis_compiler::ir::StateMachine {
+    let hold_pred = IRExpr::Literal(Literal::Bool(hold));
+    let release_pred = IRExpr::Literal(Literal::Bool(release));
+    StateMachineBuilder::new().compile_until(s("Proof"), s("Inv"), hold_pred, release_pred)
+}
+
+/// `until(field.hold, field.release)` — driven by event field values.
+fn until_sm_field_driven() -> aegis_compiler::ir::StateMachine {
+    use aegis_compiler::ast::BinaryOp;
+    let hold_pred = IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("phase")] })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("holding")))),
+    };
+    let release_pred = IRExpr::Binary {
+        op: BinaryOp::Eq,
+        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("phase")] })),
+        right: Box::new(IRExpr::Literal(Literal::String(s("done")))),
+    };
+    StateMachineBuilder::new().compile_until(s("Proof"), s("Inv"), hold_pred, release_pred)
+}
+
+fn phase_event(phase: &str) -> Event {
+    Event::new("ev").with_field("phase", Value::String(s(phase)))
+}
+
+#[test]
+fn until_hold_true_release_false_stays_active_initially() {
+    // hold=true, release=false → machine stays in holding (Active), no violation.
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm(true, false)));
+    let result = engine.evaluate(&Event::new("ev"));
+    assert_eq!(result.verdict, Verdict::Allow);
+    assert!(result.violations.is_empty());
+}
+
+#[test]
+fn until_hold_false_immediately_violates() {
+    // hold=false, release=false → hold breaks immediately → violated.
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm(false, false)));
+    let result = engine.evaluate(&Event::new("ev"));
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn until_release_true_transitions_to_satisfied() {
+    // hold=true, release=true → release fires → satisfied, no violation.
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm(true, true)));
+    let result = engine.evaluate(&Event::new("ev"));
+    assert_eq!(result.verdict, Verdict::Allow);
+    assert!(result.violations.is_empty());
+    assert_eq!(engine.status().satisfied_state_machines, 1);
+}
+
+#[test]
+fn until_field_driven_holding_phase_stays_active() {
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm_field_driven()));
+    // "holding" phase: hold predicate true, release false → stays in holding.
+    let result = engine.evaluate(&phase_event("holding"));
+    assert_eq!(result.verdict, Verdict::Allow);
+    assert!(result.violations.is_empty());
+}
+
+#[test]
+fn until_field_driven_done_phase_satisfies() {
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm_field_driven()));
+    engine.evaluate(&phase_event("holding")); // hold
+    // "done" triggers release.
+    let result = engine.evaluate(&phase_event("done"));
+    assert_eq!(result.verdict, Verdict::Allow);
+    assert_eq!(engine.status().satisfied_state_machines, 1);
+}
+
+#[test]
+fn until_field_driven_wrong_phase_violates() {
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm_field_driven()));
+    // "other" phase: hold predicate is false, release is false → violated.
+    let result = engine.evaluate(&phase_event("other"));
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn until_violation_is_permanent() {
+    let mut engine = PolicyEngine::new(policy_with_sm(until_sm(false, false)));
+    engine.evaluate(&Event::new("ev")); // violate
+    // Subsequent events stay denied.
+    assert_eq!(engine.evaluate(&Event::new("ev")).verdict, Verdict::Deny);
+}

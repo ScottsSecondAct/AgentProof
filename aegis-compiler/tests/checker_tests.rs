@@ -2040,3 +2040,164 @@ fn message_event_known_field_no_errors() {
     )]);
     assert_no_errors(&check(&prog));
 }
+
+// ── Temporal: Until, Before, After ───────────────────────────────────────────
+
+fn until_expr(hold: Spanned<Expr>, release: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::Until {
+        hold: Box::new(hold),
+        release: Box::new(release),
+    }))
+}
+
+fn before_expr(first: Spanned<Expr>, second: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::Before {
+        first: Box::new(first),
+        second: Box::new(second),
+    }))
+}
+
+fn after_expr(condition: Spanned<Expr>, trigger: Spanned<Expr>) -> Spanned<Expr> {
+    Spanned::dummy(Expr::Temporal(TemporalExpr::After {
+        condition: Box::new(condition),
+        trigger: Box::new(trigger),
+    }))
+}
+
+#[test]
+fn until_in_proof_with_bool_operands_has_no_errors() {
+    let expr = until_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn until_in_rule_when_clause_emits_e0202() {
+    // until() is a temporal operator — not allowed outside proof blocks.
+    let expr = until_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(expr), deny_verdict()],
+        )],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0202);
+}
+
+#[test]
+fn until_non_bool_hold_operand_emits_error() {
+    // until(42, true) — left side must be bool
+    let expr = until_expr(int_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool hold in until() should emit an error"
+    );
+}
+
+#[test]
+fn until_non_bool_release_operand_emits_error() {
+    // until(true, 42) — right side must be bool
+    let expr = until_expr(bool_expr(), int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool release in until() should emit an error"
+    );
+}
+
+#[test]
+fn before_in_proof_with_bool_operands_has_no_errors() {
+    let expr = before_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn before_in_rule_when_clause_emits_e0202() {
+    let expr = before_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(expr), deny_verdict()],
+        )],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0202);
+}
+
+#[test]
+fn before_non_bool_first_operand_emits_error() {
+    let expr = before_expr(int_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(check(&prog).has_errors(), "non-bool first in before() should emit an error");
+}
+
+#[test]
+fn before_non_bool_second_operand_emits_error() {
+    let expr = before_expr(bool_expr(), int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(check(&prog).has_errors(), "non-bool second in before() should emit an error");
+}
+
+#[test]
+fn after_in_proof_with_bool_operands_has_no_errors() {
+    let expr = after_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert_no_errors(&check(&prog));
+}
+
+#[test]
+fn after_in_rule_when_clause_emits_e0202() {
+    let expr = after_expr(bool_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![rule_member(
+            "tool_call",
+            vec![when_clause(expr), deny_verdict()],
+        )],
+    )]);
+    assert_has_code(&check(&prog), DiagnosticCode::E0202);
+}
+
+#[test]
+fn after_non_bool_condition_emits_error() {
+    let expr = after_expr(int_expr(), bool_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(check(&prog).has_errors(), "non-bool condition in after() should emit an error");
+}
+
+#[test]
+fn after_non_bool_trigger_emits_error() {
+    let expr = after_expr(bool_expr(), int_expr());
+    let prog = program(vec![simple_policy(
+        "Guard",
+        vec![proof_member("P", "I", expr)],
+    )]);
+    assert!(check(&prog).has_errors(), "non-bool trigger in after() should emit an error");
+}

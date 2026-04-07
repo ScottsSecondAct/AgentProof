@@ -1127,3 +1127,86 @@ fn decision_tree_switch_guard_case() {
     };
     assert_eq!(eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev), str_val("high"));
 }
+
+// ── RefRoot::Local ────────────────────────────────────────────────────────────
+
+fn eval_with_locals(
+    expr: &IRExpr,
+    event: &Event,
+    locals: std::collections::HashMap<u32, Value>,
+) -> Value {
+    let empty1: HashMap<SmolStr, Value> = HashMap::new();
+    let empty2: HashMap<SmolStr, Value> = HashMap::new();
+    let mut ctx = EvalContext::new(event, &empty1, &empty2);
+    ctx.locals = locals;
+    eval(expr, &ctx)
+}
+
+#[test]
+fn local_slot_0_returns_bound_string_value() {
+    let ev = Event::new("x");
+    let mut locals = HashMap::new();
+    locals.insert(0u32, str_val("hello"));
+    let result = eval_with_locals(&local_ref(0), &ev, locals);
+    assert_eq!(result, str_val("hello"));
+}
+
+#[test]
+fn local_slot_1_returns_bound_int_value() {
+    let ev = Event::new("x");
+    let mut locals = HashMap::new();
+    locals.insert(1u32, int(42));
+    let result = eval_with_locals(&local_ref(1), &ev, locals);
+    assert_eq!(result, int(42));
+}
+
+#[test]
+fn local_unbound_slot_returns_null() {
+    let ev = Event::new("x");
+    // Slot 99 is not bound.
+    let result = eval_with_locals(&local_ref(99), &ev, HashMap::new());
+    assert_eq!(result, Value::Null);
+}
+
+#[test]
+fn local_slot_bool_value() {
+    let ev = Event::new("x");
+    let mut locals = HashMap::new();
+    locals.insert(0u32, bool_val(false));
+    let result = eval_with_locals(&local_ref(0), &ev, locals);
+    assert_eq!(result, bool_val(false));
+}
+
+#[test]
+fn local_slot_used_in_binary_expression() {
+    // `local[0] == 10` where local[0] = 10 → true
+    let ev = Event::new("x");
+    let mut locals = HashMap::new();
+    locals.insert(0u32, int(10));
+    let expr = binary(BinaryOp::Eq, local_ref(0), lit_int(10));
+    let result = eval_with_locals(&expr, &ev, locals);
+    assert_eq!(result, bool_val(true));
+}
+
+#[test]
+fn multiple_local_slots_are_independent() {
+    let ev = Event::new("x");
+    let mut locals = HashMap::new();
+    locals.insert(0u32, int(1));
+    locals.insert(1u32, int(2));
+    // local[0] + local[1] = 3
+    let expr = binary(BinaryOp::Add, local_ref(0), local_ref(1));
+    let result = eval_with_locals(&expr, &ev, locals);
+    assert_eq!(result, int(3));
+}
+
+#[test]
+fn local_slot_shadows_event_field() {
+    // The local slot evaluation is independent of event fields.
+    let ev = event_with("x", int(999));
+    let mut locals = HashMap::new();
+    locals.insert(0u32, int(7));
+    // Evaluating a local ref returns the local, not the event field.
+    let result = eval_with_locals(&local_ref(0), &ev, locals);
+    assert_eq!(result, int(7));
+}

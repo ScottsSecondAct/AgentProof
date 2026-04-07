@@ -240,3 +240,97 @@ fn extract_tool_call(msg: &Message) -> (String, JsonValue) {
 
     (tool_name, arguments)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn make_tools_call_msg(name: &str, args: JsonValue) -> Message {
+        Message {
+            jsonrpc: "2.0".into(),
+            id: Some(json!(1)),
+            method: Some("tools/call".into()),
+            params: Some(json!({
+                "name": name,
+                "arguments": args,
+            })),
+            result: None,
+            error: None,
+        }
+    }
+
+    fn no_params_msg() -> Message {
+        Message {
+            jsonrpc: "2.0".into(),
+            id: Some(json!(1)),
+            method: Some("tools/call".into()),
+            params: None,
+            result: None,
+            error: None,
+        }
+    }
+
+    // ── extract_tool_call ─────────────────────────────────────────────────
+
+    #[test]
+    fn extract_tool_call_returns_name_and_arguments() {
+        let msg = make_tools_call_msg("http_get", json!({"url": "https://example.com"}));
+        let (name, args) = extract_tool_call(&msg);
+        assert_eq!(name, "http_get");
+        assert_eq!(args["url"], json!("https://example.com"));
+    }
+
+    #[test]
+    fn extract_tool_call_no_params_returns_unknown() {
+        let msg = no_params_msg();
+        let (name, args) = extract_tool_call(&msg);
+        assert_eq!(name, "unknown");
+        assert_eq!(args, JsonValue::Object(Default::default()));
+    }
+
+    #[test]
+    fn extract_tool_call_missing_name_field_returns_unknown() {
+        let mut msg = make_tools_call_msg("http_get", json!({}));
+        // Remove the name field from params.
+        if let Some(params) = msg.params.as_mut() {
+            if let Some(obj) = params.as_object_mut() {
+                obj.remove("name");
+            }
+        }
+        let (name, _) = extract_tool_call(&msg);
+        assert_eq!(name, "unknown");
+    }
+
+    #[test]
+    fn extract_tool_call_missing_arguments_returns_empty_object() {
+        let mut msg = make_tools_call_msg("http_get", json!({}));
+        // Remove the arguments field.
+        if let Some(params) = msg.params.as_mut() {
+            if let Some(obj) = params.as_object_mut() {
+                obj.remove("arguments");
+            }
+        }
+        let (_, args) = extract_tool_call(&msg);
+        assert_eq!(args, JsonValue::Object(Default::default()));
+    }
+
+    #[test]
+    fn extract_tool_call_with_empty_arguments() {
+        let msg = make_tools_call_msg("list_files", json!({}));
+        let (name, args) = extract_tool_call(&msg);
+        assert_eq!(name, "list_files");
+        assert_eq!(args, json!({}));
+    }
+
+    #[test]
+    fn extract_tool_call_with_nested_arguments() {
+        let msg = make_tools_call_msg(
+            "query_db",
+            json!({"table": "users", "filter": {"active": true}}),
+        );
+        let (name, args) = extract_tool_call(&msg);
+        assert_eq!(name, "query_db");
+        assert_eq!(args["filter"]["active"], json!(true));
+    }
+}

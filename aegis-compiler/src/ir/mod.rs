@@ -1200,4 +1200,321 @@ mod tests {
         let sm = b.compile_always(name("m"), name("i"), lit_true(), None);
         assert_eq!(sm.id, 0);
     }
+
+    // ── compile_next ─────────────────────────────────────────────────────
+
+    #[test]
+    fn next_has_four_states() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states.len(), 4);
+    }
+
+    #[test]
+    fn next_kind_is_next() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.kind, TemporalKind::Next);
+    }
+
+    #[test]
+    fn next_initial_state_is_0() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.initial_state, 0);
+    }
+
+    #[test]
+    fn next_state_0_is_initial_active() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[0].label.as_str(), "initial");
+        assert_eq!(sm.states[0].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn next_state_1_is_checking_active() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[1].label.as_str(), "checking");
+        assert_eq!(sm.states[1].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn next_state_2_is_satisfied() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[2].kind, StateKind::Satisfied);
+        assert_eq!(sm.states[2].label.as_str(), "satisfied");
+    }
+
+    #[test]
+    fn next_state_3_is_violated() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[3].kind, StateKind::Violated);
+        assert_eq!(sm.states[3].label.as_str(), "violated");
+    }
+
+    #[test]
+    fn next_accepting_states_is_2() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.accepting_states, vec![2]);
+    }
+
+    #[test]
+    fn next_violating_states_is_3() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.violating_states, vec![3]);
+    }
+
+    #[test]
+    fn next_has_three_transitions() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.transitions.len(), 3);
+    }
+
+    #[test]
+    fn next_first_transition_is_always_0_to_1() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[0];
+        assert_eq!(t.from, 0);
+        assert_eq!(t.to, 1);
+        assert!(matches!(t.guard, TransitionGuard::Always));
+    }
+
+    #[test]
+    fn next_second_transition_predicate_1_to_2() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[1];
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 2);
+        assert!(matches!(t.guard, TransitionGuard::Predicate(_)));
+    }
+
+    #[test]
+    fn next_third_transition_negated_predicate_1_to_3() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[2];
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 3);
+        assert!(matches!(t.guard, TransitionGuard::NegatedPredicate(_)));
+    }
+
+    #[test]
+    fn next_has_no_deadline() {
+        let sm = StateMachineBuilder::new().compile_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.deadline_millis, None);
+    }
+
+    // ── compile_always_next ──────────────────────────────────────────────
+
+    #[test]
+    fn always_next_has_three_states() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states.len(), 3);
+    }
+
+    #[test]
+    fn always_next_kind_is_next() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.kind, TemporalKind::Next);
+    }
+
+    #[test]
+    fn always_next_initial_state_is_0() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.initial_state, 0);
+    }
+
+    #[test]
+    fn always_next_state_0_is_initial() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[0].label.as_str(), "initial");
+        assert_eq!(sm.states[0].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn always_next_state_1_is_checking() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[1].label.as_str(), "checking");
+        assert_eq!(sm.states[1].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn always_next_state_2_is_violated() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.states[2].kind, StateKind::Violated);
+        assert_eq!(sm.states[2].label.as_str(), "violated");
+    }
+
+    #[test]
+    fn always_next_accepting_states_is_1() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.accepting_states, vec![1]);
+    }
+
+    #[test]
+    fn always_next_violating_states_is_2() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.violating_states, vec![2]);
+    }
+
+    #[test]
+    fn always_next_has_three_transitions() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        assert_eq!(sm.transitions.len(), 3);
+    }
+
+    #[test]
+    fn always_next_first_transition_is_always_0_to_1() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[0];
+        assert_eq!(t.from, 0);
+        assert_eq!(t.to, 1);
+        assert!(matches!(t.guard, TransitionGuard::Always));
+    }
+
+    #[test]
+    fn always_next_self_loop_is_1_to_1_on_predicate() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[1];
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 1);
+        assert!(matches!(t.guard, TransitionGuard::Predicate(_)));
+    }
+
+    #[test]
+    fn always_next_violation_transition_is_1_to_2() {
+        let sm = StateMachineBuilder::new().compile_always_next(name("m"), name("inv"), lit_true());
+        let t = &sm.transitions[2];
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 2);
+        assert!(matches!(t.guard, TransitionGuard::NegatedPredicate(_)));
+    }
+
+    // ── compile_always_implies_next ──────────────────────────────────────
+
+    #[test]
+    fn always_implies_next_has_three_states() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.states.len(), 3);
+    }
+
+    #[test]
+    fn always_implies_next_kind_is_next() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.kind, TemporalKind::Next);
+    }
+
+    #[test]
+    fn always_implies_next_initial_state_is_0() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.initial_state, 0);
+    }
+
+    #[test]
+    fn always_implies_next_state_0_is_idle() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.states[0].label.as_str(), "idle");
+        assert_eq!(sm.states[0].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn always_implies_next_state_1_is_armed() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.states[1].label.as_str(), "armed");
+        assert_eq!(sm.states[1].kind, StateKind::Active);
+    }
+
+    #[test]
+    fn always_implies_next_state_2_is_violated() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.states[2].kind, StateKind::Violated);
+        assert_eq!(sm.states[2].label.as_str(), "violated");
+    }
+
+    #[test]
+    fn always_implies_next_accepting_states_is_0() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.accepting_states, vec![0]);
+    }
+
+    #[test]
+    fn always_implies_next_violating_states_is_2() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.violating_states, vec![2]);
+    }
+
+    #[test]
+    fn always_implies_next_has_four_transitions() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        assert_eq!(sm.transitions.len(), 4);
+    }
+
+    #[test]
+    fn always_implies_next_idle_self_loop_on_negated_trigger() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        let t = &sm.transitions[0]; // no trigger → stay idle
+        assert_eq!(t.from, 0);
+        assert_eq!(t.to, 0);
+        assert!(matches!(t.guard, TransitionGuard::NegatedPredicate(_)));
+    }
+
+    #[test]
+    fn always_implies_next_armed_on_trigger() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        let t = &sm.transitions[1]; // trigger → arm
+        assert_eq!(t.from, 0);
+        assert_eq!(t.to, 1);
+        assert!(matches!(t.guard, TransitionGuard::Predicate(_)));
+    }
+
+    #[test]
+    fn always_implies_next_reset_to_idle_on_response() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        let t = &sm.transitions[2]; // response ok → reset
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 0);
+        assert!(matches!(t.guard, TransitionGuard::Predicate(_)));
+    }
+
+    #[test]
+    fn always_implies_next_violated_on_wrong_response() {
+        let sm = StateMachineBuilder::new().compile_always_implies_next(
+            name("m"), name("inv"), lit_true(), lit_false(),
+        );
+        let t = &sm.transitions[3]; // bad response → violated
+        assert_eq!(t.from, 1);
+        assert_eq!(t.to, 2);
+        assert!(matches!(t.guard, TransitionGuard::NegatedPredicate(_)));
+    }
+
+    #[test]
+    fn next_methods_produce_sequential_ids() {
+        let mut b = StateMachineBuilder::new();
+        let sm1 = b.compile_next(name("m1"), name("i1"), lit_true());
+        let sm2 = b.compile_always_next(name("m2"), name("i2"), lit_true());
+        let sm3 = b.compile_always_implies_next(name("m3"), name("i3"), lit_true(), lit_false());
+        assert_eq!(sm1.id, 0);
+        assert_eq!(sm2.id, 1);
+        assert_eq!(sm3.id, 2);
+    }
 }
