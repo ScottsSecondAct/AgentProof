@@ -223,8 +223,9 @@ AutomaGuard/
 ├── automaguard-ts/      # TypeScript SDK — napi-rs; LangChain.js, OpenAI, Vercel AI
 ├── automaguard-dotnet/  # C# SDK — P/Invoke + Semantic Kernel IFunctionInvocationFilter
 ├── automaguard-java/    # Java/Kotlin SDK — JNI; Spring AI advisor, LangChain4j filter
+├── automaguard-go/      # Go SDK — cgo bindings to libaegis
 ├── automaguard-python/  # Python SDK — pyo3/maturin; LangChain, OpenAI integrations
-└── examples/            # Per-SDK runnable examples (python, rust, typescript, dotnet, java)
+└── examples/            # Per-SDK runnable examples (python, rust, typescript, dotnet, java, go)
 ```
 
 ## Integration Options
@@ -236,7 +237,7 @@ AutomaGuard/
 | **automaguard-ts** | TypeScript / Node.js | `AutomaGuardCallbackHandler`, `enforce()`, `withGuard()` | ✅ available |
 | **automaguard-dotnet** | C# / .NET 8+ | `AddAutomaGuard()` — Semantic Kernel `IFunctionInvocationFilter` | ✅ available |
 | **automaguard-java** | Java / Kotlin | Spring AI advisor, LangChain4j filter (JNI) | ✅ available |
-| **automaguard-go** | Go | `NewEngine` / `engine.Evaluate` (cgo) | ⬜ planned |
+| **automaguard-go** | Go | `NewEngine` / `engine.Evaluate` (cgo) | ✅ available |
 | **MCP Proxy** | Any | Zero-code sidecar interceptor | ⬜ planned |
 
 ## Building from Source
@@ -277,6 +278,9 @@ cd automaguard-ts && npm test
 
 # Run .NET tests
 cd automaguard-dotnet && dotnet test
+
+# Go SDK (no cgo — pure type tests)
+cd automaguard-go && CGO_ENABLED=0 go test ./...
 ```
 
 ### CLI

@@ -200,3 +200,46 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # ── automaguard-go ─────────────────────────────────────────────────────────────
+  go-sdk:
+    name: automaguard-go (vet / test)
+    runs-on: ubuntu-latest
+    needs: runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: aegis-ffi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: automaguard-go/go.sum
+
+      - name: Build libaegis
+        run: cargo build --release
+        working-directory: aegis-ffi
+
+      - name: Copy native library
+        run: |
+          mkdir -p automaguard-go/native/linux_amd64
+          cp aegis-ffi/target/release/libaegis.so automaguard-go/native/linux_amd64/
+
+      - name: Vet (no cgo)
+        run: CGO_ENABLED=0 go vet ./...
+        working-directory: automaguard-go
+
+      - name: Test (no cgo)
+        run: CGO_ENABLED=0 go test ./...
+        working-directory: automaguard-go
+
+      - name: Test (cgo + native library)
+        run: go test -tags cgo ./...
+        working-directory: automaguard-go
+        env:
+          CGO_LDFLAGS: "-L${{ github.workspace }}/aegis-ffi/target/release"
+          LD_LIBRARY_PATH: "${{ github.workspace }}/aegis-ffi/target/release"

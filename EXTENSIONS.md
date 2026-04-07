@@ -485,7 +485,7 @@ Go module: `github.com/automaguard/automaguard-go`.
 15. ⬜ Publish to Maven Central
 
 ### Phase 6 — Go SDK
-16. ⬜ `automaguard-go/`: cgo bindings, prebuilt native libs per GOOS/GOARCH
+16. ✅ `automaguard-go/`: cgo bindings, prebuilt native libs per GOOS/GOARCH
 17. ⬜ Publish Go module
 
 ---
@@ -709,7 +709,7 @@ examples/
 │   │   ├── CustomerDataTools.java
 │   │   └── Prompts.java
 │   └── demo.sh
-└── go/              ⬜ planned (Phase 6)
+└── go/              ✅ implemented
     ├── go.mod
     ├── main.go                     # CLI agent
     ├── tools.go
