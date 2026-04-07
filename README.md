@@ -1,4 +1,4 @@
-# AutomaGuard
+t# AutomaGuard
 
 [![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green.svg)](https://github.com/ScottsSecondAct/some) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude-blue?logo=anthropic) [![CI](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/ci.yml) [![Staging](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/staging.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/staging.yml) [![Release](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/release.yml/badge.svg)](https://github.com/ScottsSecondAct/AutomaGuard/actions/workflows/release.yml)
 
@@ -211,6 +211,46 @@ let engine = AsyncPolicyEngine::from_file("guard.aegisc")?;
 let result = engine.evaluate("tool_call", fields).await?;
 ```
 
+## Quick Start — MCP Proxy
+
+The MCP proxy requires **zero code changes**.  Configure it in place of your
+upstream MCP server and it automatically intercepts every `tools/call`:
+
+```bash
+# Build
+cd automaguard-mcp-proxy && cargo build --release
+
+# Run — drop in before your existing server command
+automaguard-mcp-proxy --policy guard.aegisc -- npx -y @modelcontextprotocol/server-filesystem /workspace
+```
+
+In Claude Desktop's `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "/path/to/automaguard-mcp-proxy",
+      "args": [
+        "--policy", "/path/to/guard.aegisc",
+        "--",
+        "npx", "-y", "@modelcontextprotocol/server-filesystem", "/workspace"
+      ]
+    }
+  }
+}
+```
+
+When a tool call violates your policy the proxy returns a JSON-RPC error
+and the upstream server never sees the request:
+
+```
+[automaguard] tool=write_file verdict=Deny latency=142μs
+AutomaGuard: External writes are not permitted
+```
+
+Add `--verbose` to trace every message through the proxy.
+
 ## Project Structure
 
 ```
@@ -225,6 +265,7 @@ AutomaGuard/
 ├── automaguard-java/    # Java/Kotlin SDK — JNI; Spring AI advisor, LangChain4j filter
 ├── automaguard-go/      # Go SDK — cgo bindings to libaegis
 ├── automaguard-python/  # Python SDK — pyo3/maturin; LangChain, OpenAI integrations
+├── automaguard-mcp-proxy/ # Rust — stdio MCP proxy sidecar (zero client-side changes)
 └── examples/            # Per-SDK runnable examples (python, rust, typescript, dotnet, java, go)
 ```
 
@@ -238,7 +279,7 @@ AutomaGuard/
 | **automaguard-dotnet** | C# / .NET 8+ | `AddAutomaGuard()` — Semantic Kernel `IFunctionInvocationFilter` | ✅ available |
 | **automaguard-java** | Java / Kotlin | Spring AI advisor, LangChain4j filter (JNI) | ✅ available |
 | **automaguard-go** | Go | `NewEngine` / `engine.Evaluate` (cgo) | ✅ available |
-| **MCP Proxy** | Any | Zero-code sidecar interceptor | ⬜ planned |
+| **MCP Proxy** | Any | Zero-code sidecar interceptor (`automaguard-mcp-proxy`) | ✅ available |
 
 ## Building from Source
 
@@ -266,6 +307,9 @@ cd automaguard-ts && npm install && npm run build
 
 # .NET SDK
 cd automaguard-dotnet && dotnet build
+
+# MCP proxy
+cd automaguard-mcp-proxy && cargo build --release
 
 # Run all Rust tests
 cargo test --workspace

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.10.17)  6 APR 2026 07:36
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.10.17)  7 APR 2026 12:20
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1601,6 +1601,8 @@ Underfull \hbox (badness 3158) in paragraph at lines 939--945
 
  Comment 'acks' writing to comment.cut.
 Straight input of comment.cut. (./comment.cut) (./automaguard.bbl
+
+
 Underfull \hbox (badness 1112) in paragraph at lines 196--203
 []\T1/LinuxLibertineT-TLF/m/n/7 (+20) Melwin Xavier, Vaisakh M A, Melveena Joll
 y, and Mid-hun Xavier. 2026.
@@ -1613,6 +1615,8 @@ Class acmart Warning: CCS concepts are mandatory for papers over two pages.
 
 
 
+Package balance Warning: You have called \balance in second column
+(balance)                Columns might not be balanced.
 
 (c:/texlive/2025/texmf-dist/tex/generic/stringenc/se-pdfdoc.def
 File: se-pdfdoc.def 2019/11/29 v1.12 stringenc: PDFDocEncoding
@@ -1629,12 +1633,18 @@ L3 programming layer <2025-09-02>
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
-Package rerunfilecheck Info: File `automaguard.out' has not changed.
-(rerunfilecheck)             Checksum: 5F0631F019EEB1187B8AB98D87DF0AD5;6111.
+
+Package rerunfilecheck Warning: File `automaguard.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `automaguard.out':
+(rerunfilecheck)             Before: 5F0631F019EEB1187B8AB98D87DF0AD5;6111
+(rerunfilecheck)             After:  9EA0A87C6D78626E680B2DD7EEED8AD8;6111.
  ) 
 Here is how much of TeX's memory you used:
- 34536 strings out of 467748
- 624946 string characters out of 5431131
+ 34537 strings out of 467748
+ 624957 string characters out of 5431131
  1341896 words of memory out of 5000000
  61788 multiletter control sequences out of 15000+600000
  825695 words of font info for 451 fonts, out of 8000000 for 9000
@@ -1652,10 +1662,10 @@ dist/fonts/type1/public/libertine/LinLibertineTI.pfb><c:/texlive/2025/texmf-dis
 t/fonts/type1/public/newtx/NewTXMI.pfb><c:/texlive/2025/texmf-dist/fonts/type1/
 public/newtx/txmiaX.pfb><c:/texlive/2025/texmf-dist/fonts/type1/public/newtx/tx
 sym.pfb><c:/texlive/2025/texmf-dist/fonts/type1/public/newtx/txsys.pfb>
-Output written on automaguard.pdf (8 pages, 524954 bytes).
+Output written on automaguard.pdf (8 pages, 525529 bytes).
 PDF statistics:
- 488 PDF objects out of 1000 (max. 8388607)
- 442 compressed objects within 5 object streams
- 177 named destinations out of 1000 (max. 500000)
+ 489 PDF objects out of 1000 (max. 8388607)
+ 443 compressed objects within 5 object streams
+ 178 named destinations out of 1000 (max. 500000)
  111949 words of extra memory for PDF output out of 128383 (max. 10000000)
 
