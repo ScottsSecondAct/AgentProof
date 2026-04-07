@@ -866,7 +866,10 @@ fn always_next_does_not_emit_e0203() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(!check(&prog).has_errors(), "always(next(φ)) must not produce errors");
+    assert!(
+        !check(&prog).has_errors(),
+        "always(next(φ)) must not produce errors"
+    );
 }
 
 #[test]
@@ -879,7 +882,10 @@ fn always_implies_next_does_not_emit_e0203() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(!check(&prog).has_errors(), "always(trigger implies next(ψ)) must not produce errors");
+    assert!(
+        !check(&prog).has_errors(),
+        "always(trigger implies next(ψ)) must not produce errors"
+    );
 }
 
 #[test]
@@ -2146,7 +2152,10 @@ fn before_non_bool_first_operand_emits_error() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(check(&prog).has_errors(), "non-bool first in before() should emit an error");
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool first in before() should emit an error"
+    );
 }
 
 #[test]
@@ -2156,7 +2165,10 @@ fn before_non_bool_second_operand_emits_error() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(check(&prog).has_errors(), "non-bool second in before() should emit an error");
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool second in before() should emit an error"
+    );
 }
 
 #[test]
@@ -2189,7 +2201,10 @@ fn after_non_bool_condition_emits_error() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(check(&prog).has_errors(), "non-bool condition in after() should emit an error");
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool condition in after() should emit an error"
+    );
 }
 
 #[test]
@@ -2199,5 +2214,8 @@ fn after_non_bool_trigger_emits_error() {
         "Guard",
         vec![proof_member("P", "I", expr)],
     )]);
-    assert!(check(&prog).has_errors(), "non-bool trigger in after() should emit an error");
+    assert!(
+        check(&prog).has_errors(),
+        "non-bool trigger in after() should emit an error"
+    );
 }

@@ -5,8 +5,8 @@
 
 use aegis_compiler::ast::{ConstraintKind, Literal, SeverityLevel, Verdict};
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata,
-    RefPath, RefRoot, StateMachineBuilder, TemporalKind,
+    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata, RefPath,
+    RefRoot, StateMachineBuilder, TemporalKind,
 };
 use smol_str::SmolStr;
 
@@ -67,7 +67,13 @@ fn conditional_rule(id: u32, on_event: &str, condition: bool, verdict: Verdict) 
 }
 
 /// Rule whose condition checks `event.field == literal_string`.
-fn field_eq_rule(id: u32, on_event: &str, field: &str, value: &str, verdict: Verdict) -> CompiledRule {
+fn field_eq_rule(
+    id: u32,
+    on_event: &str,
+    field: &str,
+    value: &str,
+    verdict: Verdict,
+) -> CompiledRule {
     use aegis_compiler::ast::BinaryOp;
     let cond = IRExpr::Binary {
         op: BinaryOp::Eq,
@@ -81,7 +87,10 @@ fn field_eq_rule(id: u32, on_event: &str, field: &str, value: &str, verdict: Ver
         id,
         on_events: vec![s(on_event)],
         condition: Some(cond),
-        verdicts: vec![IRVerdict { verdict, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -154,15 +163,23 @@ fn rule_with_empty_on_events_fires_on_all() {
     let mut rule = unconditional_rule(0, "tool_call", Verdict::Deny);
     rule.on_events.clear(); // no filter → fires on any event
     let mut engine = PolicyEngine::new(policy_with_rule(rule));
-    assert_eq!(engine.evaluate(&Event::new("data_access")).verdict, Verdict::Deny);
-    assert_eq!(engine.evaluate(&Event::new("message")).verdict, Verdict::Deny);
+    assert_eq!(
+        engine.evaluate(&Event::new("data_access")).verdict,
+        Verdict::Deny
+    );
+    assert_eq!(
+        engine.evaluate(&Event::new("message")).verdict,
+        Verdict::Deny
+    );
 }
 
 #[test]
 fn deny_overrides_audit() {
     let mut p = empty_policy("Test");
-    p.rules.push(unconditional_rule(0, "tool_call", Verdict::Audit));
-    p.rules.push(unconditional_rule(1, "tool_call", Verdict::Deny));
+    p.rules
+        .push(unconditional_rule(0, "tool_call", Verdict::Audit));
+    p.rules
+        .push(unconditional_rule(1, "tool_call", Verdict::Deny));
     let mut engine = PolicyEngine::new(p);
     let result = engine.evaluate(&tool_call("any"));
     assert_eq!(result.verdict, Verdict::Deny);
@@ -207,8 +224,10 @@ fn rule_with_message_populates_reason() {
 #[test]
 fn multiple_triggered_rules_all_listed() {
     let mut p = empty_policy("Test");
-    p.rules.push(unconditional_rule(0, "tool_call", Verdict::Audit));
-    p.rules.push(unconditional_rule(1, "tool_call", Verdict::Audit));
+    p.rules
+        .push(unconditional_rule(0, "tool_call", Verdict::Audit));
+    p.rules
+        .push(unconditional_rule(1, "tool_call", Verdict::Audit));
     let mut engine = PolicyEngine::new(p);
     let result = engine.evaluate(&tool_call("any"));
     assert!(result.triggered_rules.contains(&0));
@@ -283,7 +302,10 @@ fn always_true_stays_satisfied_indefinitely() {
     let mut engine = PolicyEngine::new(policy_with_sm(always_sm(true)));
     for _ in 0..5 {
         let result = engine.evaluate(&Event::new("any"));
-        assert!(result.violations.is_empty(), "always(true) should never violate");
+        assert!(
+            result.violations.is_empty(),
+            "always(true) should never violate"
+        );
         assert_eq!(result.verdict, Verdict::Allow);
     }
 }
@@ -311,7 +333,10 @@ fn always_violation_sets_reason() {
     let result = engine.evaluate(&Event::new("any"));
     assert!(result.reason.is_some());
     let reason = result.reason.unwrap();
-    assert!(reason.contains("Invariant"), "reason should mention Invariant, got: {reason}");
+    assert!(
+        reason.contains("Invariant"),
+        "reason should mention Invariant, got: {reason}"
+    );
 }
 
 #[test]
@@ -347,7 +372,10 @@ fn never_false_never_violates() {
     let mut engine = PolicyEngine::new(policy_with_sm(never_sm(false)));
     for _ in 0..5 {
         let result = engine.evaluate(&Event::new("any"));
-        assert!(result.violations.is_empty(), "never(false) should never violate");
+        assert!(
+            result.violations.is_empty(),
+            "never(false) should never violate"
+        );
         assert_eq!(result.verdict, Verdict::Allow);
     }
 }
@@ -362,9 +390,17 @@ fn never_true_violates_on_first_event() {
 
 // ── State machine: eventually ─────────────────────────────────────────────────
 
-fn eventually_sm_with_deadline(condition: bool, deadline_ms: u64) -> aegis_compiler::ir::StateMachine {
+fn eventually_sm_with_deadline(
+    condition: bool,
+    deadline_ms: u64,
+) -> aegis_compiler::ir::StateMachine {
     let predicate = IRExpr::Literal(Literal::Bool(condition));
-    StateMachineBuilder::new().compile_eventually(s("Proof"), s("Inv"), predicate, Some(deadline_ms))
+    StateMachineBuilder::new().compile_eventually(
+        s("Proof"),
+        s("Inv"),
+        predicate,
+        Some(deadline_ms),
+    )
 }
 
 fn eventually_sm_no_deadline(condition: bool) -> aegis_compiler::ir::StateMachine {
@@ -387,7 +423,10 @@ fn eventually_without_deadline_stays_waiting_indefinitely() {
     // condition is false and no deadline → stays in waiting (Active), no violation
     for _ in 0..5 {
         let result = engine.evaluate(&Event::new("any"));
-        assert!(result.violations.is_empty(), "eventually without deadline should not violate");
+        assert!(
+            result.violations.is_empty(),
+            "eventually without deadline should not violate"
+        );
         assert_eq!(result.verdict, Verdict::Allow);
     }
 }
@@ -407,7 +446,10 @@ fn eventually_with_deadline_violates_when_expired() {
     let mut ev = Event::new("any");
     ev.timestamp_ms = engine_start + 10_000; // 10 seconds after engine creation
     let result = engine.evaluate(&ev);
-    assert!(!result.violations.is_empty(), "deadline should have expired → violation");
+    assert!(
+        !result.violations.is_empty(),
+        "deadline should have expired → violation"
+    );
     assert_eq!(result.verdict, Verdict::Deny);
 }
 
@@ -437,7 +479,11 @@ fn rate_limit_under_limit_allows() {
         let mut ev = Event::new("tool_call");
         ev.timestamp_ms = 1000 + i * 100;
         let result = engine.evaluate(&ev);
-        assert_eq!(result.verdict, Verdict::Allow, "event {i} should be allowed");
+        assert_eq!(
+            result.verdict,
+            Verdict::Allow,
+            "event {i} should be allowed"
+        );
     }
 }
 
@@ -449,7 +495,11 @@ fn rate_limit_at_limit_allows() {
         let mut ev = Event::new("tool_call");
         ev.timestamp_ms = 1000 + i * 100;
         let result = engine.evaluate(&ev);
-        assert_eq!(result.verdict, Verdict::Allow, "event {i} at limit should allow");
+        assert_eq!(
+            result.verdict,
+            Verdict::Allow,
+            "event {i} at limit should allow"
+        );
     }
 }
 
@@ -500,7 +550,11 @@ fn rate_limit_only_counts_matching_event_type() {
         let mut ev = Event::new("data_access");
         ev.timestamp_ms = 1000 + i * 100;
         let result = engine.evaluate(&ev);
-        assert_eq!(result.verdict, Verdict::Allow, "data_access should not hit tool_call limit");
+        assert_eq!(
+            result.verdict,
+            Verdict::Allow,
+            "data_access should not hit tool_call limit"
+        );
     }
 }
 
@@ -546,7 +600,10 @@ fn flag_true_predicate() -> IRExpr {
     use aegis_compiler::ast::BinaryOp;
     IRExpr::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("flag")] })),
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Event,
+            fields: vec![s("flag")],
+        })),
         right: Box::new(IRExpr::Literal(Literal::Bool(true))),
     }
 }
@@ -619,8 +676,8 @@ fn always_next_keeps_checking_after_success() {
     // After a successful check, the machine loops back and keeps enforcing.
     let mut engine = PolicyEngine::new(always_next_policy(flag_true_predicate()));
     engine.evaluate(&flag_event(false)); // skip
-    engine.evaluate(&flag_event(true));  // ok
-    engine.evaluate(&flag_event(true));  // ok
+    engine.evaluate(&flag_event(true)); // ok
+    engine.evaluate(&flag_event(true)); // ok
     assert_eq!(engine.evaluate(&flag_event(false)).verdict, Verdict::Deny);
 }
 
@@ -628,8 +685,8 @@ fn always_next_keeps_checking_after_success() {
 
 fn always_implies_next_policy(trigger: IRExpr, response: IRExpr) -> CompiledPolicy {
     let mut p = empty_policy("AlwaysImpliesNext");
-    let sm = StateMachineBuilder::new()
-        .compile_always_implies_next(s("P"), s("I"), trigger, response);
+    let sm =
+        StateMachineBuilder::new().compile_always_implies_next(s("P"), s("I"), trigger, response);
     p.state_machines.push(sm);
     p
 }
@@ -639,7 +696,10 @@ fn login_predicate() -> IRExpr {
     use aegis_compiler::ast::BinaryOp;
     IRExpr::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("kind")] })),
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Event,
+            fields: vec![s("kind")],
+        })),
         right: Box::new(IRExpr::Literal(Literal::String(s("login")))),
     }
 }
@@ -649,7 +709,10 @@ fn mfa_predicate() -> IRExpr {
     use aegis_compiler::ast::BinaryOp;
     IRExpr::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("kind")] })),
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Event,
+            fields: vec![s("kind")],
+        })),
         right: Box::new(IRExpr::Literal(Literal::String(s("mfa")))),
     }
 }
@@ -661,20 +724,31 @@ fn kind_event(kind: &str) -> Event {
 #[test]
 fn always_implies_next_no_trigger_always_allows() {
     // Trigger never fires: machine stays idle, all events allowed.
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
+    assert_eq!(
+        engine.evaluate(&kind_event("other")).verdict,
+        Verdict::Allow
     );
-    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
-    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
-    assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Allow);
+    assert_eq!(
+        engine.evaluate(&kind_event("other")).verdict,
+        Verdict::Allow
+    );
+    assert_eq!(
+        engine.evaluate(&kind_event("other")).verdict,
+        Verdict::Allow
+    );
 }
 
 #[test]
 fn always_implies_next_trigger_then_valid_response_allows() {
     // login → mfa: should allow both events.
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     engine.evaluate(&kind_event("login")); // trigger: idle → armed
     assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Allow); // armed → idle
 }
@@ -682,9 +756,10 @@ fn always_implies_next_trigger_then_valid_response_allows() {
 #[test]
 fn always_implies_next_trigger_then_wrong_response_denies() {
     // login → other (not mfa): should deny.
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     engine.evaluate(&kind_event("login")); // idle → armed
     assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
 }
@@ -692,24 +767,26 @@ fn always_implies_next_trigger_then_wrong_response_denies() {
 #[test]
 fn always_implies_next_resets_after_valid_response() {
     // After a valid response, the machine resets to idle and monitors again.
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     engine.evaluate(&kind_event("login")); // armed
-    engine.evaluate(&kind_event("mfa"));  // reset to idle
-    // Second occurrence: login again
+    engine.evaluate(&kind_event("mfa")); // reset to idle
+                                         // Second occurrence: login again
     engine.evaluate(&kind_event("login")); // armed again
     assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
 }
 
 #[test]
 fn always_implies_next_violation_is_permanent() {
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     engine.evaluate(&kind_event("login")); // armed
     engine.evaluate(&kind_event("other")); // violated
-    // All subsequent events denied.
+                                           // All subsequent events denied.
     assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Deny);
     assert_eq!(engine.evaluate(&kind_event("other")).verdict, Verdict::Deny);
 }
@@ -717,9 +794,10 @@ fn always_implies_next_violation_is_permanent() {
 #[test]
 fn always_implies_next_trigger_then_correct_response_resets_and_allows_again() {
     // Three full login→mfa cycles, all allowed.
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     for _ in 0..3 {
         engine.evaluate(&kind_event("login"));
         assert_eq!(engine.evaluate(&kind_event("mfa")).verdict, Verdict::Allow);
@@ -728,9 +806,10 @@ fn always_implies_next_trigger_then_correct_response_resets_and_allows_again() {
 
 #[test]
 fn always_implies_next_violation_reported_in_violations_vec() {
-    let mut engine = PolicyEngine::new(
-        always_implies_next_policy(login_predicate(), mfa_predicate()),
-    );
+    let mut engine = PolicyEngine::new(always_implies_next_policy(
+        login_predicate(),
+        mfa_predicate(),
+    ));
     engine.evaluate(&kind_event("login")); // armed
     let result = engine.evaluate(&kind_event("other")); // violate
     assert!(!result.violations.is_empty());
@@ -753,7 +832,10 @@ fn context_block_rule() -> CompiledRule {
         id: 0,
         on_events: vec![s("tool_call")],
         condition: Some(cond),
-        verdicts: vec![IRVerdict { verdict: Verdict::Deny, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict: Verdict::Deny,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -774,7 +856,10 @@ fn policy_env_rule() -> CompiledRule {
         id: 0,
         on_events: vec![s("tool_call")],
         condition: Some(cond),
-        verdicts: vec![IRVerdict { verdict: Verdict::Deny, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict: Verdict::Deny,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -854,12 +939,18 @@ fn until_sm_field_driven() -> aegis_compiler::ir::StateMachine {
     use aegis_compiler::ast::BinaryOp;
     let hold_pred = IRExpr::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("phase")] })),
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Event,
+            fields: vec![s("phase")],
+        })),
         right: Box::new(IRExpr::Literal(Literal::String(s("holding")))),
     };
     let release_pred = IRExpr::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("phase")] })),
+        left: Box::new(IRExpr::Ref(RefPath {
+            root: RefRoot::Event,
+            fields: vec![s("phase")],
+        })),
         right: Box::new(IRExpr::Literal(Literal::String(s("done")))),
     };
     StateMachineBuilder::new().compile_until(s("Proof"), s("Inv"), hold_pred, release_pred)
@@ -910,7 +1001,7 @@ fn until_field_driven_holding_phase_stays_active() {
 fn until_field_driven_done_phase_satisfies() {
     let mut engine = PolicyEngine::new(policy_with_sm(until_sm_field_driven()));
     engine.evaluate(&phase_event("holding")); // hold
-    // "done" triggers release.
+                                              // "done" triggers release.
     let result = engine.evaluate(&phase_event("done"));
     assert_eq!(result.verdict, Verdict::Allow);
     assert_eq!(engine.status().satisfied_state_machines, 1);
@@ -929,6 +1020,6 @@ fn until_field_driven_wrong_phase_violates() {
 fn until_violation_is_permanent() {
     let mut engine = PolicyEngine::new(policy_with_sm(until_sm(false, false)));
     engine.evaluate(&Event::new("ev")); // violate
-    // Subsequent events stay denied.
+                                        // Subsequent events stay denied.
     assert_eq!(engine.evaluate(&Event::new("ev")).verdict, Verdict::Deny);
 }

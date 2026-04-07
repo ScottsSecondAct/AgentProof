@@ -10,8 +10,8 @@ use smol_str::SmolStr;
 
 use aegis_compiler::ast::{ConstraintKind, SeverityLevel, Verdict};
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, StateId, StateKind, StateMachine,
-    TemporalKind, TransitionGuard,
+    CompiledConstraint, CompiledPolicy, StateId, StateKind, StateMachine, TemporalKind,
+    TransitionGuard,
 };
 
 use crate::eval::{self, EvalContext};
@@ -311,8 +311,7 @@ impl PolicyEngine {
         // ── 2. Evaluate rules ────────────────────────────────────────
         for rule in &self.policy.rules {
             // Check if this rule applies to the event type
-            let applies =
-                rule.on_events.is_empty() || rule.on_events.contains(&event.event_type);
+            let applies = rule.on_events.is_empty() || rule.on_events.contains(&event.event_type);
 
             if !applies {
                 continue;

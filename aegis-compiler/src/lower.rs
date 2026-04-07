@@ -41,19 +41,25 @@ fn expr_contains_next(expr: &Expr) -> bool {
             expr_contains_next(&object.node)
                 || args.iter().any(|a| expr_contains_next(&a.value.node))
         }
-        Expr::Quantifier { collection, predicate, .. } => {
-            expr_contains_next(&collection.node) || expr_contains_next(&predicate.body.node)
-        }
-        Expr::Predicate { subject, argument, .. } => {
-            expr_contains_next(&subject.node) || expr_contains_next(&argument.node)
-        }
-        Expr::Count { collection, filter, .. } => {
+        Expr::Quantifier {
+            collection,
+            predicate,
+            ..
+        } => expr_contains_next(&collection.node) || expr_contains_next(&predicate.body.node),
+        Expr::Predicate {
+            subject, argument, ..
+        } => expr_contains_next(&subject.node) || expr_contains_next(&argument.node),
+        Expr::Count {
+            collection, filter, ..
+        } => {
             expr_contains_next(&collection.node)
                 || filter
                     .as_ref()
                     .is_some_and(|f| expr_contains_next(&f.body.node))
         }
-        Expr::Match { scrutinee, arms, .. } => {
+        Expr::Match {
+            scrutinee, arms, ..
+        } => {
             expr_contains_next(&scrutinee.node)
                 || arms.iter().any(|a| match &a.result.node {
                     MatchResult::Expr(e) => expr_contains_next(e),
@@ -507,8 +513,7 @@ impl Lowering {
                     // always(φ).  Detect these before the general path.
 
                     // Case 1: always(next(ψ))
-                    if let Expr::Temporal(TemporalExpr::Next { condition: inner }) =
-                        &condition.node
+                    if let Expr::Temporal(TemporalExpr::Next { condition: inner }) = &condition.node
                     {
                         let response = self.lower_expr(&inner.node);
                         return Some(self.sm_builder.compile_always_next(
@@ -600,7 +605,10 @@ impl Lowering {
                     // (e.g. "after every login, the next event must be MFA"),
                     // use `always(trigger implies next(ψ))` instead.
                     let predicate = self.lower_expr(&condition.node);
-                    Some(self.sm_builder.compile_next(proof_name, invariant_name, predicate))
+                    Some(
+                        self.sm_builder
+                            .compile_next(proof_name, invariant_name, predicate),
+                    )
                 }
 
                 TemporalExpr::Before { first, second } => {

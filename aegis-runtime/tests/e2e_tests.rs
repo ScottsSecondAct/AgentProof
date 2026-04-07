@@ -35,7 +35,10 @@ fn engine_from_source(source: &str) -> PolicyEngine {
         panic!("compile errors:\n{rendered}");
     }
 
-    assert!(!compiled.is_empty(), "source must define at least one policy");
+    assert!(
+        !compiled.is_empty(),
+        "source must define at least one policy"
+    );
 
     // Round-trip through bytecode to verify the full serialization path.
     let bytes = bytecode::to_bytecode(&compiled[0]).expect("bytecode serialization failed");
@@ -94,13 +97,19 @@ policy BlockHttpGet {
 #[test]
 fn e2e_conditional_deny_on_matching_tool() {
     let mut engine = engine_from_source(BLOCK_HTTP_GET);
-    assert_eq!(engine.evaluate(&tool_call("http_get")).verdict, Verdict::Deny);
+    assert_eq!(
+        engine.evaluate(&tool_call("http_get")).verdict,
+        Verdict::Deny
+    );
 }
 
 #[test]
 fn e2e_conditional_allow_on_non_matching_tool() {
     let mut engine = engine_from_source(BLOCK_HTTP_GET);
-    assert_eq!(engine.evaluate(&tool_call("db_query")).verdict, Verdict::Allow);
+    assert_eq!(
+        engine.evaluate(&tool_call("db_query")).verdict,
+        Verdict::Allow
+    );
 }
 
 // ── Audit rules ───────────────────────────────────────────────────────────────
@@ -117,13 +126,19 @@ policy AuditWrites {
 #[test]
 fn e2e_audit_rule_produces_audit_verdict() {
     let mut engine = engine_from_source(AUDIT_WRITE);
-    assert_eq!(engine.evaluate(&tool_call("file_write")).verdict, Verdict::Audit);
+    assert_eq!(
+        engine.evaluate(&tool_call("file_write")).verdict,
+        Verdict::Audit
+    );
 }
 
 #[test]
 fn e2e_audit_rule_non_matching_tool_allows() {
     let mut engine = engine_from_source(AUDIT_WRITE);
-    assert_eq!(engine.evaluate(&tool_call("http_get")).verdict, Verdict::Allow);
+    assert_eq!(
+        engine.evaluate(&tool_call("http_get")).verdict,
+        Verdict::Allow
+    );
 }
 
 // ── never invariant ───────────────────────────────────────────────────────────
@@ -142,7 +157,10 @@ policy NoExec {
 fn e2e_always_invariant_allows_safe_tools() {
     let mut engine = engine_from_source(NEVER_EXEC);
     for _ in 0..5 {
-        assert_eq!(engine.evaluate(&tool_call("http_get")).verdict, Verdict::Allow);
+        assert_eq!(
+            engine.evaluate(&tool_call("http_get")).verdict,
+            Verdict::Allow
+        );
     }
 }
 
@@ -158,8 +176,11 @@ fn e2e_never_invariant_denies_on_violation() {
 fn e2e_never_invariant_violation_persists() {
     let mut engine = engine_from_source(NEVER_EXEC);
     engine.evaluate(&tool_call("exec")); // violate
-    // All subsequent events are denied.
-    assert_eq!(engine.evaluate(&tool_call("http_get")).verdict, Verdict::Deny);
+                                         // All subsequent events are denied.
+    assert_eq!(
+        engine.evaluate(&tool_call("http_get")).verdict,
+        Verdict::Deny
+    );
 }
 
 // ── Rate limit constraint ─────────────────────────────────────────────────────
@@ -242,8 +263,14 @@ fn e2e_engine_from_file_produces_correct_verdicts() {
     let policy = bytecode::read_file(&path).unwrap();
     let mut engine = PolicyEngine::new(policy);
 
-    assert_eq!(engine.evaluate(&tool_call("http_get")).verdict, Verdict::Deny);
-    assert_eq!(engine.evaluate(&tool_call("db_query")).verdict, Verdict::Allow);
+    assert_eq!(
+        engine.evaluate(&tool_call("http_get")).verdict,
+        Verdict::Deny
+    );
+    assert_eq!(
+        engine.evaluate(&tool_call("db_query")).verdict,
+        Verdict::Allow
+    );
 
     let _ = std::fs::remove_file(&path);
 }

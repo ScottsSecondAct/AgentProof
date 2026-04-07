@@ -6,13 +6,13 @@
 
 use std::collections::HashMap;
 
+use aegis_compiler::ast::Verdict;
 use aegis_compiler::ast::{
     BinaryOp, DurationLit, DurationUnit, Literal, PredicateKind, QuantifierKind, UnaryOp,
 };
 use aegis_compiler::ir::{
     CaseTest, DecisionCase, DecisionNode, IRExpr, IRVerdict, RefPath, RefRoot,
 };
-use aegis_compiler::ast::Verdict;
 use smol_str::SmolStr;
 
 use aegis_runtime::eval::{eval, EvalContext};
@@ -41,10 +41,7 @@ fn lit_str(v: &str) -> IRExpr {
 }
 
 fn lit_dur(value: u64, unit: DurationUnit) -> IRExpr {
-    IRExpr::Literal(Literal::Duration(DurationLit {
-        value,
-        unit,
-    }))
+    IRExpr::Literal(Literal::Duration(DurationLit { value, unit }))
 }
 
 fn event_ref(field: &str) -> IRExpr {
@@ -339,7 +336,10 @@ fn local_slot_missing_returns_null() {
 #[test]
 fn add_int_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Add, lit_int(3), lit_int(4)), &ev), int(7));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Add, lit_int(3), lit_int(4)), &ev),
+        int(7)
+    );
 }
 
 #[test]
@@ -373,37 +373,55 @@ fn add_type_mismatch_returns_null() {
 #[test]
 fn sub_int_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Sub, lit_int(10), lit_int(3)), &ev), int(7));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Sub, lit_int(10), lit_int(3)), &ev),
+        int(7)
+    );
 }
 
 #[test]
 fn mul_int_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Mul, lit_int(4), lit_int(5)), &ev), int(20));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Mul, lit_int(4), lit_int(5)), &ev),
+        int(20)
+    );
 }
 
 #[test]
 fn div_int_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Div, lit_int(10), lit_int(2)), &ev), int(5));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Div, lit_int(10), lit_int(2)), &ev),
+        int(5)
+    );
 }
 
 #[test]
 fn div_by_zero_returns_null() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Div, lit_int(5), lit_int(0)), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Div, lit_int(5), lit_int(0)), &ev),
+        Value::Null
+    );
 }
 
 #[test]
 fn mod_int_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Mod, lit_int(7), lit_int(3)), &ev), int(1));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Mod, lit_int(7), lit_int(3)), &ev),
+        int(1)
+    );
 }
 
 #[test]
 fn mod_by_zero_returns_null() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Mod, lit_int(7), lit_int(0)), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Mod, lit_int(7), lit_int(0)), &ev),
+        Value::Null
+    );
 }
 
 // ── Binary operators: comparison ──────────────────────────────────────────────
@@ -411,38 +429,59 @@ fn mod_by_zero_returns_null() {
 #[test]
 fn lt_int_true() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Lt, lit_int(1), lit_int(2)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Lt, lit_int(1), lit_int(2)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn lt_int_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Lt, lit_int(2), lit_int(1)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Lt, lit_int(2), lit_int(1)), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
 fn le_equal_is_true() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Le, lit_int(3), lit_int(3)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Le, lit_int(3), lit_int(3)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn gt_float() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Gt, lit_float(5.0), lit_float(3.0)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Gt, lit_float(5.0), lit_float(3.0)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn ge_string_comparison() {
     let ev = Event::new("x");
     // "beta" >= "alpha" → true (lexicographic)
-    assert_eq!(eval_expr(&binary(BinaryOp::Ge, lit_str("beta"), lit_str("alpha")), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(
+            &binary(BinaryOp::Ge, lit_str("beta"), lit_str("alpha")),
+            &ev
+        ),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn compare_incompatible_types_returns_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Lt, lit_int(1), lit_str("a")), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Lt, lit_int(1), lit_str("a")), &ev),
+        bool_val(false)
+    );
 }
 
 // ── Binary operators: equality ────────────────────────────────────────────────
@@ -450,26 +489,38 @@ fn compare_incompatible_types_returns_false() {
 #[test]
 fn eq_int_same_values() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Eq, lit_int(7), lit_int(7)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Eq, lit_int(7), lit_int(7)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn eq_int_different_values() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Eq, lit_int(1), lit_int(2)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Eq, lit_int(1), lit_int(2)), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
 fn eq_int_float_cross_type() {
     let ev = Event::new("x");
     // 1 == 1.0 → true (numeric widening equality)
-    assert_eq!(eval_expr(&binary(BinaryOp::Eq, lit_int(1), lit_float(1.0)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Eq, lit_int(1), lit_float(1.0)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn eq_null_null() {
     let ev = Event::new("x");
-    let null = IRExpr::Ref(RefPath { root: RefRoot::Event, fields: vec![s("missing")] });
+    let null = IRExpr::Ref(RefPath {
+        root: RefRoot::Event,
+        fields: vec![s("missing")],
+    });
     let result = eval_expr(&binary(BinaryOp::Eq, null.clone(), null), &ev);
     assert_eq!(result, bool_val(true));
 }
@@ -477,7 +528,10 @@ fn eq_null_null() {
 #[test]
 fn neq_strings() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Neq, lit_str("a"), lit_str("b")), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Neq, lit_str("a"), lit_str("b")), &ev),
+        bool_val(true)
+    );
 }
 
 // ── Binary operators: logical ─────────────────────────────────────────────────
@@ -485,7 +539,10 @@ fn neq_strings() {
 #[test]
 fn and_both_true() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::And, lit_bool(true), lit_bool(true)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::And, lit_bool(true), lit_bool(true)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
@@ -507,26 +564,47 @@ fn or_short_circuits_on_true() {
 #[test]
 fn or_both_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Or, lit_bool(false), lit_bool(false)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::Or, lit_bool(false), lit_bool(false)), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
 fn implies_false_antecedent_is_true() {
     // false → anything ≡ true
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Implies, lit_bool(false), lit_bool(false)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(
+            &binary(BinaryOp::Implies, lit_bool(false), lit_bool(false)),
+            &ev
+        ),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn implies_true_antecedent_true_consequent() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Implies, lit_bool(true), lit_bool(true)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(
+            &binary(BinaryOp::Implies, lit_bool(true), lit_bool(true)),
+            &ev
+        ),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn implies_true_antecedent_false_consequent() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::Implies, lit_bool(true), lit_bool(false)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(
+            &binary(BinaryOp::Implies, lit_bool(true), lit_bool(false)),
+            &ev
+        ),
+        bool_val(false)
+    );
 }
 
 // ── Binary operators: membership ─────────────────────────────────────────────
@@ -535,14 +613,20 @@ fn implies_true_antecedent_false_consequent() {
 fn in_list_found() {
     let ev = Event::new("x");
     let list_expr = IRExpr::List(vec![lit_str("a"), lit_str("b"), lit_str("c")]);
-    assert_eq!(eval_expr(&binary(BinaryOp::In, lit_str("b"), list_expr), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::In, lit_str("b"), list_expr), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn in_list_not_found() {
     let ev = Event::new("x");
     let list_expr = IRExpr::List(vec![lit_str("a"), lit_str("b")]);
-    assert_eq!(eval_expr(&binary(BinaryOp::In, lit_str("z"), list_expr), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::In, lit_str("z"), list_expr), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
@@ -557,7 +641,10 @@ fn in_map_key_found() {
 #[test]
 fn in_non_collection_returns_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&binary(BinaryOp::In, lit_int(1), lit_int(2)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&binary(BinaryOp::In, lit_int(1), lit_int(2)), &ev),
+        bool_val(false)
+    );
 }
 
 // ── Unary operators ───────────────────────────────────────────────────────────
@@ -565,14 +652,20 @@ fn in_non_collection_returns_false() {
 #[test]
 fn not_true_gives_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&unary(UnaryOp::Not, lit_bool(true)), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&unary(UnaryOp::Not, lit_bool(true)), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
 fn not_falsy_null_gives_true() {
     let ev = Event::new("x");
     let null_ref = event_ref("missing");
-    assert_eq!(eval_expr(&unary(UnaryOp::Not, null_ref), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&unary(UnaryOp::Not, null_ref), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
@@ -584,13 +677,19 @@ fn neg_int() {
 #[test]
 fn neg_float() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&unary(UnaryOp::Neg, lit_float(2.5)), &ev), float(-2.5));
+    assert_eq!(
+        eval_expr(&unary(UnaryOp::Neg, lit_float(2.5)), &ev),
+        float(-2.5)
+    );
 }
 
 #[test]
 fn neg_string_returns_null() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&unary(UnaryOp::Neg, lit_str("bad")), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&unary(UnaryOp::Neg, lit_str("bad")), &ev),
+        Value::Null
+    );
 }
 
 // ── Predicates ────────────────────────────────────────────────────────────────
@@ -599,7 +698,14 @@ fn neg_string_returns_null() {
 fn contains_string_substring_found() {
     let ev = Event::new("x");
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Contains, lit_str("hello world"), lit_str("world")), &ev),
+        eval_expr(
+            &predicate(
+                PredicateKind::Contains,
+                lit_str("hello world"),
+                lit_str("world")
+            ),
+            &ev
+        ),
         bool_val(true)
     );
 }
@@ -608,7 +714,10 @@ fn contains_string_substring_found() {
 fn contains_string_not_found() {
     let ev = Event::new("x");
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Contains, lit_str("hello"), lit_str("xyz")), &ev),
+        eval_expr(
+            &predicate(PredicateKind::Contains, lit_str("hello"), lit_str("xyz")),
+            &ev
+        ),
         bool_val(false)
     );
 }
@@ -617,7 +726,10 @@ fn contains_string_not_found() {
 fn contains_list_value_found() {
     let ev = event_with("items", list(vec![int(1), int(2), int(3)]));
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Contains, event_ref("items"), lit_int(2)), &ev),
+        eval_expr(
+            &predicate(PredicateKind::Contains, event_ref("items"), lit_int(2)),
+            &ev
+        ),
         bool_val(true)
     );
 }
@@ -626,7 +738,10 @@ fn contains_list_value_found() {
 fn contains_list_value_not_found() {
     let ev = event_with("items", list(vec![int(1), int(2)]));
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Contains, event_ref("items"), lit_int(9)), &ev),
+        eval_expr(
+            &predicate(PredicateKind::Contains, event_ref("items"), lit_int(9)),
+            &ev
+        ),
         bool_val(false)
     );
 }
@@ -636,7 +751,10 @@ fn matches_exact_pattern() {
     let ev = Event::new("x");
     // pattern "^hello$" = exact match for "hello"
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Matches, lit_str("hello"), lit_str("^hello$")), &ev),
+        eval_expr(
+            &predicate(PredicateKind::Matches, lit_str("hello"), lit_str("^hello$")),
+            &ev
+        ),
         bool_val(true)
     );
 }
@@ -647,7 +765,11 @@ fn matches_prefix_pattern() {
     // "https://example.com" matches "https://.*"
     assert_eq!(
         eval_expr(
-            &predicate(PredicateKind::Matches, lit_str("https://example.com"), lit_str("https://.*")),
+            &predicate(
+                PredicateKind::Matches,
+                lit_str("https://example.com"),
+                lit_str("https://.*")
+            ),
             &ev
         ),
         bool_val(true)
@@ -660,7 +782,11 @@ fn matches_suffix_pattern() {
     // "report.csv" matches ".*.csv"
     assert_eq!(
         eval_expr(
-            &predicate(PredicateKind::Matches, lit_str("report.csv"), lit_str(".*.csv")),
+            &predicate(
+                PredicateKind::Matches,
+                lit_str("report.csv"),
+                lit_str(".*.csv")
+            ),
             &ev
         ),
         bool_val(true)
@@ -672,7 +798,10 @@ fn matches_substring_pattern() {
     let ev = Event::new("x");
     // "foobar" matches "oba" (contains)
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::Matches, lit_str("foobar"), lit_str("oba")), &ev),
+        eval_expr(
+            &predicate(PredicateKind::Matches, lit_str("foobar"), lit_str("oba")),
+            &ev
+        ),
         bool_val(true)
     );
 }
@@ -682,7 +811,11 @@ fn starts_with_true() {
     let ev = Event::new("x");
     assert_eq!(
         eval_expr(
-            &predicate(PredicateKind::StartsWith, lit_str("https://example.com"), lit_str("https://")),
+            &predicate(
+                PredicateKind::StartsWith,
+                lit_str("https://example.com"),
+                lit_str("https://")
+            ),
             &ev
         ),
         bool_val(true)
@@ -694,7 +827,11 @@ fn starts_with_false() {
     let ev = Event::new("x");
     assert_eq!(
         eval_expr(
-            &predicate(PredicateKind::StartsWith, lit_str("http://"), lit_str("https://")),
+            &predicate(
+                PredicateKind::StartsWith,
+                lit_str("http://"),
+                lit_str("https://")
+            ),
             &ev
         ),
         bool_val(false)
@@ -705,7 +842,14 @@ fn starts_with_false() {
 fn ends_with_true() {
     let ev = Event::new("x");
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::EndsWith, lit_str("report.csv"), lit_str(".csv")), &ev),
+        eval_expr(
+            &predicate(
+                PredicateKind::EndsWith,
+                lit_str("report.csv"),
+                lit_str(".csv")
+            ),
+            &ev
+        ),
         bool_val(true)
     );
 }
@@ -714,7 +858,14 @@ fn ends_with_true() {
 fn ends_with_false() {
     let ev = Event::new("x");
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::EndsWith, lit_str("report.csv"), lit_str(".pdf")), &ev),
+        eval_expr(
+            &predicate(
+                PredicateKind::EndsWith,
+                lit_str("report.csv"),
+                lit_str(".pdf")
+            ),
+            &ev
+        ),
         bool_val(false)
     );
 }
@@ -723,7 +874,10 @@ fn ends_with_false() {
 fn predicate_non_string_subject_returns_false() {
     let ev = Event::new("x");
     assert_eq!(
-        eval_expr(&predicate(PredicateKind::StartsWith, lit_int(42), lit_str("4")), &ev),
+        eval_expr(
+            &predicate(PredicateKind::StartsWith, lit_int(42), lit_str("4")),
+            &ev
+        ),
         bool_val(false)
     );
 }
@@ -891,13 +1045,19 @@ fn builtin_len_no_args_returns_zero() {
 #[test]
 fn builtin_to_string_int() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("to_string", vec![lit_int(42)]), &ev), str_val("42"));
+    assert_eq!(
+        eval_expr(&call("to_string", vec![lit_int(42)]), &ev),
+        str_val("42")
+    );
 }
 
 #[test]
 fn builtin_str_bool() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("str", vec![lit_bool(true)]), &ev), str_val("true"));
+    assert_eq!(
+        eval_expr(&call("str", vec![lit_bool(true)]), &ev),
+        str_val("true")
+    );
 }
 
 #[test]
@@ -909,25 +1069,37 @@ fn builtin_abs_negative_int() {
 #[test]
 fn builtin_abs_float() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("abs", vec![lit_float(-3.5)]), &ev), float(3.5));
+    assert_eq!(
+        eval_expr(&call("abs", vec![lit_float(-3.5)]), &ev),
+        float(3.5)
+    );
 }
 
 #[test]
 fn builtin_min_two_ints() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("min", vec![lit_int(3), lit_int(7)]), &ev), int(3));
+    assert_eq!(
+        eval_expr(&call("min", vec![lit_int(3), lit_int(7)]), &ev),
+        int(3)
+    );
 }
 
 #[test]
 fn builtin_max_two_ints() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("max", vec![lit_int(3), lit_int(7)]), &ev), int(7));
+    assert_eq!(
+        eval_expr(&call("max", vec![lit_int(3), lit_int(7)]), &ev),
+        int(7)
+    );
 }
 
 #[test]
 fn builtin_unknown_returns_null() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&call("no_such_fn", vec![lit_int(1)]), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&call("no_such_fn", vec![lit_int(1)]), &ev),
+        Value::Null
+    );
 }
 
 // ── Method calls ──────────────────────────────────────────────────────────────
@@ -962,63 +1134,93 @@ fn method_trim() {
 #[test]
 fn method_string_len() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&method_call(lit_str("hello"), "len", vec![]), &ev), int(5));
+    assert_eq!(
+        eval_expr(&method_call(lit_str("hello"), "len", vec![]), &ev),
+        int(5)
+    );
 }
 
 #[test]
 fn method_string_is_empty_false() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&method_call(lit_str("hi"), "is_empty", vec![]), &ev), bool_val(false));
+    assert_eq!(
+        eval_expr(&method_call(lit_str("hi"), "is_empty", vec![]), &ev),
+        bool_val(false)
+    );
 }
 
 #[test]
 fn method_string_is_empty_true() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&method_call(lit_str(""), "is_empty", vec![]), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&method_call(lit_str(""), "is_empty", vec![]), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn method_split() {
     let ev = Event::new("x");
-    let result = eval_expr(&method_call(lit_str("a,b,c"), "split", vec![lit_str(",")]), &ev);
+    let result = eval_expr(
+        &method_call(lit_str("a,b,c"), "split", vec![lit_str(",")]),
+        &ev,
+    );
     assert_eq!(result, list(vec![str_val("a"), str_val("b"), str_val("c")]));
 }
 
 #[test]
 fn method_list_first() {
     let ev = event_with("items", list(vec![int(10), int(20)]));
-    assert_eq!(eval_expr(&method_call(event_ref("items"), "first", vec![]), &ev), int(10));
+    assert_eq!(
+        eval_expr(&method_call(event_ref("items"), "first", vec![]), &ev),
+        int(10)
+    );
 }
 
 #[test]
 fn method_list_last() {
     let ev = event_with("items", list(vec![int(10), int(20)]));
-    assert_eq!(eval_expr(&method_call(event_ref("items"), "last", vec![]), &ev), int(20));
+    assert_eq!(
+        eval_expr(&method_call(event_ref("items"), "last", vec![]), &ev),
+        int(20)
+    );
 }
 
 #[test]
 fn method_list_first_on_empty_returns_null() {
     let ev = event_with("items", list(vec![]));
-    assert_eq!(eval_expr(&method_call(event_ref("items"), "first", vec![]), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&method_call(event_ref("items"), "first", vec![]), &ev),
+        Value::Null
+    );
 }
 
 #[test]
 fn method_list_len() {
     let ev = event_with("items", list(vec![int(1), int(2), int(3)]));
-    assert_eq!(eval_expr(&method_call(event_ref("items"), "length", vec![]), &ev), int(3));
+    assert_eq!(
+        eval_expr(&method_call(event_ref("items"), "length", vec![]), &ev),
+        int(3)
+    );
 }
 
 #[test]
 fn method_list_is_empty() {
     let ev = event_with("items", list(vec![]));
-    assert_eq!(eval_expr(&method_call(event_ref("items"), "is_empty", vec![]), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&method_call(event_ref("items"), "is_empty", vec![]), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
 fn method_map_len() {
     let map: HashMap<SmolStr, Value> = [(s("a"), int(1)), (s("b"), int(2))].into_iter().collect();
     let ev = event_with("mymap", Value::Map(map));
-    assert_eq!(eval_expr(&method_call(event_ref("mymap"), "len", vec![]), &ev), int(2));
+    assert_eq!(
+        eval_expr(&method_call(event_ref("mymap"), "len", vec![]), &ev),
+        int(2)
+    );
 }
 
 #[test]
@@ -1040,7 +1242,10 @@ fn method_map_has_key_false() {
 #[test]
 fn method_unknown_returns_null() {
     let ev = Event::new("x");
-    assert_eq!(eval_expr(&method_call(lit_int(5), "nonexistent", vec![]), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&method_call(lit_int(5), "nonexistent", vec![]), &ev),
+        Value::Null
+    );
 }
 
 // ── Decision trees ────────────────────────────────────────────────────────────
@@ -1082,7 +1287,10 @@ fn decision_tree_switch_literal_match() {
         ],
         default: None,
     };
-    assert_eq!(eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev), bool_val(true));
+    assert_eq!(
+        eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev),
+        bool_val(true)
+    );
 }
 
 #[test]
@@ -1096,7 +1304,10 @@ fn decision_tree_switch_falls_through_to_default() {
         }],
         default: Some(Box::new(DecisionNode::Leaf(Box::new(lit_str("default"))))),
     };
-    assert_eq!(eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev), str_val("default"));
+    assert_eq!(
+        eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev),
+        str_val("default")
+    );
 }
 
 #[test]
@@ -1110,7 +1321,10 @@ fn decision_tree_switch_no_match_no_default_returns_null() {
         }],
         default: None,
     };
-    assert_eq!(eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev), Value::Null);
+    assert_eq!(
+        eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev),
+        Value::Null
+    );
 }
 
 #[test]
@@ -1125,7 +1339,10 @@ fn decision_tree_switch_guard_case() {
         }],
         default: Some(Box::new(DecisionNode::Leaf(Box::new(lit_str("low"))))),
     };
-    assert_eq!(eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev), str_val("high"));
+    assert_eq!(
+        eval_expr(&IRExpr::DecisionTree(Box::new(node)), &ev),
+        str_val("high")
+    );
 }
 
 // ── RefRoot::Local ────────────────────────────────────────────────────────────

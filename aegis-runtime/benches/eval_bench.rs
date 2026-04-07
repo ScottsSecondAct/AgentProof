@@ -23,8 +23,8 @@ use smol_str::SmolStr;
 
 use aegis_compiler::ast::{BinaryOp, ConstraintKind, Literal, SeverityLevel, Verdict};
 use aegis_compiler::ir::{
-    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata,
-    RefPath, RefRoot, StateMachineBuilder,
+    CompiledConstraint, CompiledPolicy, CompiledRule, IRExpr, IRVerdict, PolicyMetadata, RefPath,
+    RefRoot, StateMachineBuilder,
 };
 
 use aegis_runtime::engine::PolicyEngine;
@@ -58,7 +58,10 @@ fn unconditional_rule(id: u32, verdict: Verdict) -> CompiledRule {
         id,
         on_events: vec![s("tool_call")],
         condition: None,
-        verdicts: vec![IRVerdict { verdict, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -78,7 +81,10 @@ fn field_eq_rule(id: u32, field: &str, value: &str, verdict: Verdict) -> Compile
         id,
         on_events: vec![s("tool_call")],
         condition: Some(cond),
-        verdicts: vec![IRVerdict { verdict, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -109,7 +115,10 @@ fn compound_condition_rule(id: u32) -> CompiledRule {
         id,
         on_events: vec![s("tool_call")],
         condition: Some(cond),
-        verdicts: vec![IRVerdict { verdict: Verdict::Deny, message: None }],
+        verdicts: vec![IRVerdict {
+            verdict: Verdict::Deny,
+            message: None,
+        }],
         actions: vec![],
         severity: None,
     }
@@ -184,7 +193,10 @@ fn nested_event() -> Event {
     };
     let endpoint = {
         let mut m = HashMap::new();
-        m.insert(s("url"), Value::String(s("https://api.example.com/v2/data")));
+        m.insert(
+            s("url"),
+            Value::String(s("https://api.example.com/v2/data")),
+        );
         m.insert(s("connection"), inner);
         Value::Map(m)
     };
@@ -213,7 +225,8 @@ fn policy_single_allow() -> CompiledPolicy {
 fn policy_field_condition() -> CompiledPolicy {
     let mut p = empty_policy("field_condition");
     // Deny if tool == "exec"; otherwise allow
-    p.rules.push(field_eq_rule(0, "tool", "exec", Verdict::Deny));
+    p.rules
+        .push(field_eq_rule(0, "tool", "exec", Verdict::Deny));
     p
 }
 
@@ -221,7 +234,8 @@ fn policy_multi_rule() -> CompiledPolicy {
     let mut p = empty_policy("multi_rule");
     // 5 rules: audit on various tool names
     for (i, name) in ["exec", "shell", "rm", "sudo", "chmod"].iter().enumerate() {
-        p.rules.push(field_eq_rule(i as u32, "tool", name, Verdict::Audit));
+        p.rules
+            .push(field_eq_rule(i as u32, "tool", name, Verdict::Audit));
     }
     p
 }
@@ -232,10 +246,19 @@ fn policy_realistic() -> CompiledPolicy {
     let mut p = empty_policy("realistic");
 
     // 8 field-equality rules (common allow-list / deny-list pattern)
-    let allowed_tools = ["search", "read_file", "write_file", "db_query",
-                         "list_dir", "stat", "env_read", "log_write"];
+    let allowed_tools = [
+        "search",
+        "read_file",
+        "write_file",
+        "db_query",
+        "list_dir",
+        "stat",
+        "env_read",
+        "log_write",
+    ];
     for (i, name) in allowed_tools.iter().enumerate() {
-        p.rules.push(field_eq_rule(i as u32, "tool", name, Verdict::Allow));
+        p.rules
+            .push(field_eq_rule(i as u32, "tool", name, Verdict::Allow));
     }
 
     // 1 compound-condition deny rule (tool=http_request with non-empty url)
@@ -249,14 +272,16 @@ fn policy_realistic() -> CompiledPolicy {
     p.state_machines.push(never_file_url_sm());
 
     // 1 rate limiter: max 100 tool_calls per minute
-    p.constraints.push(rate_limit_constraint("tool_call", 100, 60_000));
+    p.constraints
+        .push(rate_limit_constraint("tool_call", 100, 60_000));
 
     p
 }
 
 fn policy_rate_limit_only() -> CompiledPolicy {
     let mut p = empty_policy("rate_limit");
-    p.constraints.push(rate_limit_constraint("tool_call", 1_000_000, 60_000));
+    p.constraints
+        .push(rate_limit_constraint("tool_call", 1_000_000, 60_000));
     p
 }
 
@@ -267,9 +292,8 @@ fn policy_state_machines_only() -> CompiledPolicy {
     p.state_machines.push(eventually_sm());
     // 4th SM: another always for breadth
     let pred = IRExpr::Literal(Literal::Bool(true));
-    p.state_machines.push(
-        StateMachineBuilder::new().compile_always(s("P"), s("I"), pred, None),
-    );
+    p.state_machines
+        .push(StateMachineBuilder::new().compile_always(s("P"), s("I"), pred, None));
     p
 }
 
@@ -278,13 +302,13 @@ fn policy_state_machines_only() -> CompiledPolicy {
 /// Benchmark each policy scenario against a representative event.
 fn bench_evaluate(c: &mut Criterion) {
     let scenarios: &[(&str, fn() -> CompiledPolicy)] = &[
-        ("baseline",            policy_baseline),
-        ("single_allow",        policy_single_allow),
-        ("field_condition",     policy_field_condition),
-        ("multi_rule_5",        policy_multi_rule),
-        ("realistic_10r_2sm",   policy_realistic),
-        ("rate_limit_only",     policy_rate_limit_only),
-        ("state_machines_4",    policy_state_machines_only),
+        ("baseline", policy_baseline),
+        ("single_allow", policy_single_allow),
+        ("field_condition", policy_field_condition),
+        ("multi_rule_5", policy_multi_rule),
+        ("realistic_10r_2sm", policy_realistic),
+        ("rate_limit_only", policy_rate_limit_only),
+        ("state_machines_4", policy_state_machines_only),
     ];
 
     let event = tool_call_event("http_request", "https://api.example.com/data");
@@ -293,21 +317,17 @@ fn bench_evaluate(c: &mut Criterion) {
     group.throughput(Throughput::Elements(1));
 
     for (name, make_policy) in scenarios {
-        group.bench_with_input(
-            BenchmarkId::new("policy", name),
-            name,
-            |b, _| {
-                b.iter_batched(
-                    || PolicyEngine::new(make_policy()),
-                    |mut engine| {
-                        let result = engine.evaluate(&event);
-                        // Prevent the compiler from optimising away the evaluation.
-                        std::hint::black_box(result.verdict)
-                    },
-                    BatchSize::SmallInput,
-                );
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("policy", name), name, |b, _| {
+            b.iter_batched(
+                || PolicyEngine::new(make_policy()),
+                |mut engine| {
+                    let result = engine.evaluate(&event);
+                    // Prevent the compiler from optimising away the evaluation.
+                    std::hint::black_box(result.verdict)
+                },
+                BatchSize::SmallInput,
+            );
+        });
     }
 
     group.finish();
@@ -378,8 +398,16 @@ fn bench_event_stream(c: &mut Criterion) {
 
     let stream: Vec<Event> = (0..100)
         .map(|i| {
-            let tool = if i % 10 == 0 { "http_request" } else { "search" };
-            let url = if i % 10 == 0 { "https://api.external.com/data" } else { "" };
+            let tool = if i % 10 == 0 {
+                "http_request"
+            } else {
+                "search"
+            };
+            let url = if i % 10 == 0 {
+                "https://api.external.com/data"
+            } else {
+                ""
+            };
             tool_call_event(tool, url)
         })
         .collect();

@@ -1391,7 +1391,10 @@ mod tests {
     #[test]
     fn always_implies_next_has_three_states() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.states.len(), 3);
     }
@@ -1399,7 +1402,10 @@ mod tests {
     #[test]
     fn always_implies_next_kind_is_next() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.kind, TemporalKind::Next);
     }
@@ -1407,7 +1413,10 @@ mod tests {
     #[test]
     fn always_implies_next_initial_state_is_0() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.initial_state, 0);
     }
@@ -1415,7 +1424,10 @@ mod tests {
     #[test]
     fn always_implies_next_state_0_is_idle() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.states[0].label.as_str(), "idle");
         assert_eq!(sm.states[0].kind, StateKind::Active);
@@ -1424,7 +1436,10 @@ mod tests {
     #[test]
     fn always_implies_next_state_1_is_armed() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.states[1].label.as_str(), "armed");
         assert_eq!(sm.states[1].kind, StateKind::Active);
@@ -1433,7 +1448,10 @@ mod tests {
     #[test]
     fn always_implies_next_state_2_is_violated() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.states[2].kind, StateKind::Violated);
         assert_eq!(sm.states[2].label.as_str(), "violated");
@@ -1442,7 +1460,10 @@ mod tests {
     #[test]
     fn always_implies_next_accepting_states_is_0() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.accepting_states, vec![0]);
     }
@@ -1450,7 +1471,10 @@ mod tests {
     #[test]
     fn always_implies_next_violating_states_is_2() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.violating_states, vec![2]);
     }
@@ -1458,7 +1482,10 @@ mod tests {
     #[test]
     fn always_implies_next_has_four_transitions() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         assert_eq!(sm.transitions.len(), 4);
     }
@@ -1466,7 +1493,10 @@ mod tests {
     #[test]
     fn always_implies_next_idle_self_loop_on_negated_trigger() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         let t = &sm.transitions[0]; // no trigger → stay idle
         assert_eq!(t.from, 0);
@@ -1477,7 +1507,10 @@ mod tests {
     #[test]
     fn always_implies_next_armed_on_trigger() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         let t = &sm.transitions[1]; // trigger → arm
         assert_eq!(t.from, 0);
@@ -1488,7 +1521,10 @@ mod tests {
     #[test]
     fn always_implies_next_reset_to_idle_on_response() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         let t = &sm.transitions[2]; // response ok → reset
         assert_eq!(t.from, 1);
@@ -1499,7 +1535,10 @@ mod tests {
     #[test]
     fn always_implies_next_violated_on_wrong_response() {
         let sm = StateMachineBuilder::new().compile_always_implies_next(
-            name("m"), name("inv"), lit_true(), lit_false(),
+            name("m"),
+            name("inv"),
+            lit_true(),
+            lit_false(),
         );
         let t = &sm.transitions[3]; // bad response → violated
         assert_eq!(t.from, 1);

@@ -25,9 +25,15 @@ pub fn mcp_tool_call_to_event(tool_name: &str, arguments: &JsonValue) -> Event {
     let mut fields: HashMap<SmolStr, AegisValue> = HashMap::new();
 
     // Primary key used by most Aegis policy rules.
-    fields.insert(SmolStr::new("tool_name"), AegisValue::String(SmolStr::new(tool_name)));
+    fields.insert(
+        SmolStr::new("tool_name"),
+        AegisValue::String(SmolStr::new(tool_name)),
+    );
     // Short alias — matches the README quick-start example (`event.tool`).
-    fields.insert(SmolStr::new("tool"), AegisValue::String(SmolStr::new(tool_name)));
+    fields.insert(
+        SmolStr::new("tool"),
+        AegisValue::String(SmolStr::new(tool_name)),
+    );
 
     // Flatten individual arguments as top-level fields for ergonomic matching.
     if let JsonValue::Object(args) = arguments {
@@ -101,7 +107,10 @@ mod tests {
     fn arguments_map_is_also_stored_nested() {
         let args = json!({"path": "/tmp/file.txt"});
         let event = mcp_tool_call_to_event("read_file", &args);
-        assert!(matches!(event.fields.get("arguments"), Some(AegisValue::Map(_))));
+        assert!(matches!(
+            event.fields.get("arguments"),
+            Some(AegisValue::Map(_))
+        ));
     }
 
     #[test]

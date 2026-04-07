@@ -52,13 +52,7 @@ pub async fn run(
     let writer_task = spawn_writer(out_rx);
     let relay_task = spawn_relay(upstream_stdout, out_tx.clone());
 
-    intercept_loop(
-        engine,
-        upstream_stdin,
-        out_tx,
-        verbose,
-    )
-    .await?;
+    intercept_loop(engine, upstream_stdin, out_tx, verbose).await?;
 
     // Tidy shutdown: wait for relay and writer to drain.
     relay_task.await.ok();
@@ -71,9 +65,7 @@ pub async fn run(
 // ── Writer task ───────────────────────────────────────────────────────────────
 
 /// Spawn a task that drains `out_rx` and writes each chunk to stdout.
-fn spawn_writer(
-    mut out_rx: mpsc::Receiver<Vec<u8>>,
-) -> tokio::task::JoinHandle<()> {
+fn spawn_writer(mut out_rx: mpsc::Receiver<Vec<u8>>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stdout = tokio::io::stdout();
         while let Some(bytes) = out_rx.recv().await {
@@ -172,15 +164,11 @@ async fn intercept_loop(
 
             eprintln!(
                 "[automaguard] tool={tool_name} verdict={:?} latency={}μs",
-                result.verdict,
-                result.eval_time_us,
+                result.verdict, result.eval_time_us,
             );
 
             if result.verdict == Verdict::Deny {
-                let reason = result
-                    .reason
-                    .as_deref()
-                    .unwrap_or("policy violation");
+                let reason = result.reason.as_deref().unwrap_or("policy violation");
 
                 let denial = Message::error_response(
                     msg.id,
@@ -221,11 +209,7 @@ async fn intercept_loop(
 /// Returns `("unknown", {})` if the expected fields are absent — the policy
 /// engine will still evaluate the event, which may produce an Audit verdict.
 fn extract_tool_call(msg: &Message) -> (String, JsonValue) {
-    let params = msg
-        .params
-        .as_ref()
-        .cloned()
-        .unwrap_or(JsonValue::Null);
+    let params = msg.params.as_ref().cloned().unwrap_or(JsonValue::Null);
 
     let tool_name = params
         .get("name")

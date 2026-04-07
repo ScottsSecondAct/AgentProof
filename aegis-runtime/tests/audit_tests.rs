@@ -84,7 +84,7 @@ fn total_recorded_counts_all_including_evicted() {
     log.record("P", &ev("x"), &result(Verdict::Allow));
     log.record("P", &ev("x"), &result(Verdict::Allow));
     log.record("P", &ev("x"), &result(Verdict::Allow)); // evicts first
-    assert_eq!(log.len(), 2);            // only 2 in buffer
+    assert_eq!(log.len(), 2); // only 2 in buffer
     assert_eq!(log.total_recorded(), 3); // but 3 total recorded
 }
 
@@ -105,12 +105,15 @@ fn ring_buffer_evicts_oldest_entry() {
     let mut log = AuditLog::in_memory(2);
     log.record("P", &ev("tool_call"), &result(Verdict::Allow)); // id 0
     log.record("P", &ev("data_access"), &result(Verdict::Deny)); // id 1
-    log.record("P", &ev("message"), &result(Verdict::Audit));     // id 2, evicts id 0
+    log.record("P", &ev("message"), &result(Verdict::Audit)); // id 2, evicts id 0
 
     // The oldest remaining entry should be id=1 (data_access)
     let recent = log.recent(2);
     let event_types: Vec<&str> = recent.iter().map(|e| e.event_type.as_str()).collect();
-    assert!(!event_types.contains(&"tool_call"), "oldest entry should have been evicted");
+    assert!(
+        !event_types.contains(&"tool_call"),
+        "oldest entry should have been evicted"
+    );
     assert!(event_types.contains(&"data_access"));
     assert!(event_types.contains(&"message"));
 }
@@ -334,7 +337,11 @@ fn stats_avg_and_max_eval_time() {
 #[test]
 fn audit_entry_serializes_to_json() {
     let mut log = AuditLog::in_memory(10);
-    log.record("Guard", &ev("tool_call"), &result_with_violation(Verdict::Deny));
+    log.record(
+        "Guard",
+        &ev("tool_call"),
+        &result_with_violation(Verdict::Deny),
+    );
     let entry = log.recent(1)[0];
     let json = serde_json::to_string(entry).expect("should serialize");
     assert!(json.contains("Guard"));

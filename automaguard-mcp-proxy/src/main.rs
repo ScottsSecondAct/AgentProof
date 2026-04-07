@@ -79,8 +79,8 @@ async fn run() -> Result<()> {
 
     // ── Load policy ───────────────────────────────────────────────────────────
     let policy_bytes = std::fs::read(&cli.policy).map_err(Error::PolicyRead)?;
-    let policy = aegis_compiler::bytecode::from_bytecode(&policy_bytes)
-        .map_err(Error::PolicyLoad)?;
+    let policy =
+        aegis_compiler::bytecode::from_bytecode(&policy_bytes).map_err(Error::PolicyLoad)?;
 
     eprintln!(
         "[automaguard] policy loaded: \"{}\" ({} rules, {} state machines)",

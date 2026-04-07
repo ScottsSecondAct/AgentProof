@@ -1344,7 +1344,11 @@ fn always_implies_next(trigger: Spanned<Expr>, response: Spanned<Expr>) -> Spann
 fn always_next_compiles_without_errors() {
     let prog = program(vec![simple_policy(
         "P",
-        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+        vec![proof_member(
+            "Proof",
+            "AlwaysNext",
+            always_next(bool_expr()),
+        )],
     )]);
     let (_, diags) = lower::compile(&prog);
     assert!(!diags.has_errors());
@@ -1354,7 +1358,11 @@ fn always_next_compiles_without_errors() {
 fn always_next_produces_kind_next() {
     let prog = program(vec![simple_policy(
         "P",
-        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+        vec![proof_member(
+            "Proof",
+            "AlwaysNext",
+            always_next(bool_expr()),
+        )],
     )]);
     let (policies, _) = lower::compile(&prog);
     assert_eq!(policies[0].state_machines[0].kind, TemporalKind::Next);
@@ -1365,7 +1373,11 @@ fn always_next_has_three_states() {
     // initial → checking (loop/violated)
     let prog = program(vec![simple_policy(
         "P",
-        vec![proof_member("Proof", "AlwaysNext", always_next(bool_expr()))],
+        vec![proof_member(
+            "Proof",
+            "AlwaysNext",
+            always_next(bool_expr()),
+        )],
     )]);
     let (policies, _) = lower::compile(&prog);
     assert_eq!(policies[0].state_machines[0].states.len(), 3);

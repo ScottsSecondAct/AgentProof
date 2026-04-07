@@ -913,9 +913,8 @@ impl TypeChecker {
                 let cond_ty = self.check_expr(&condition.node, condition.span, inner_ctx);
                 // Accept bool OR Temporal (Temporal arises from nested next()
                 // inside always(), which is the permitted sequencing pattern).
-                let is_proposition = cond_ty.is_bool()
-                    || matches!(cond_ty, Ty::Temporal)
-                    || cond_ty.is_error();
+                let is_proposition =
+                    cond_ty.is_bool() || matches!(cond_ty, Ty::Temporal) || cond_ty.is_error();
                 if !is_proposition {
                     let op = if matches!(temporal, TemporalExpr::Always { .. }) {
                         "always"
