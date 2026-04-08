@@ -469,23 +469,6 @@ function buildWebviewHtml(doc, _webview, _context) {
           <span class="rule-verdict">${esc(verdicts)}</span>${sev}
         </div>`;
         }).join("");
-    const smHtml = stateMachines.length === 0
-        ? "<p class='empty'>No state machines (no temporal invariants).</p>"
-        : stateMachines.map((sm) => {
-            const smName = String(sm["name"] ?? "-");
-            const invName = String(sm["invariant_name"] ?? "-");
-            const kind = String(sm["kind"] ?? "-");
-            const states = (sm["states"] ?? []).length;
-            const transitions = (sm["transitions"] ?? []).length;
-            const deadline = sm["deadline_millis"] != null
-                ? ` <span class="badge-info">deadline: ${sm["deadline_millis"]}ms</span>` : "";
-            return `<div class="sm-row">
-          <span class="sm-name">${esc(smName)}</span>
-          <span class="sm-inv">invariant: <em>${esc(invName)}</em></span>
-          <span class="sm-kind badge-kind">${esc(kind)}</span>
-          <span class="sm-stats">${states} states · ${transitions} transitions</span>${deadline}
-        </div>`;
-        }).join("");
     const constraintsHtml = constraints.length === 0
         ? "<p class='empty'>No rate limits or quotas.</p>"
         : constraints.map((c) => {
@@ -599,6 +582,78 @@ function buildWebviewHtml(doc, _webview, _context) {
   .valid-chip { display: inline-flex; align-items: center; gap: 4px;
                 font-size: 0.8em; padding: 2px 8px; border-radius: 10px;
                 background: #1a3a1a; color: #a5d6a7; }
+
+  /* ── State machine graph ─────────────────────────────────────── */
+  .sm-graph-wrapper {
+    margin: 12px 0;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .sm-graph-title {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    background: var(--vscode-sideBar-background);
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sm-graph-title:hover { background: var(--vscode-list-hoverBackground); }
+  .sm-graph-title.open { border-bottom: 1px solid var(--vscode-panel-border); }
+  .sm-graph-chevron {
+    flex-shrink: 0;
+    color: var(--vscode-foreground);
+    opacity: 0.7;
+    transition: transform 0.12s ease;
+    transform: rotate(0deg);
+  }
+  .sm-graph-title.open .sm-graph-chevron {
+    transform: rotate(90deg);
+  }
+  .sm-graph-title .sm-graph-kind {
+    font-size: 0.78em; font-family: monospace; padding: 1px 6px;
+    border-radius: 10px; background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+  }
+  .sm-graph-title .sm-graph-inv {
+    color: var(--vscode-descriptionForeground); font-weight: 400;
+  }
+  .sm-graph-body { display: none; }
+  .sm-graph-body.open { display: block; }
+  .sm-graph-svg-wrap {
+    overflow-x: auto;
+    background: var(--vscode-editor-background);
+  }
+  .sm-graph-legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    padding: 6px 12px;
+    font-size: 0.78em;
+    border-top: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-sideBar-background);
+    color: var(--vscode-descriptionForeground);
+  }
+  .sm-graph-legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .sm-zoom-controls {
+    margin-left: auto; display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  }
+  .sm-zoom-btn {
+    background: var(--vscode-button-secondaryBackground, #3c3c3c);
+    color: var(--vscode-button-secondaryForeground, #ccc);
+    border: 1px solid var(--vscode-contrastBorder, transparent);
+    border-radius: 3px; padding: 1px 7px; font-size: 0.85em;
+    cursor: pointer; line-height: 1.5; user-select: none;
+  }
+  .sm-zoom-btn:hover { background: var(--vscode-button-secondaryHoverBackground, #505050); }
+  .sm-zoom-label {
+    font-size: 0.78em; color: var(--vscode-descriptionForeground);
+    min-width: 38px; text-align: center; font-family: monospace;
+  }
+  .sm-graph-svg-inner { display: inline-block; }
 </style>
 </head>
 <body>
@@ -625,7 +680,8 @@ function buildWebviewHtml(doc, _webview, _context) {
 ${rulesHtml}
 
 <h2>State Machines — Temporal Invariants (${stateMachines.length})</h2>
-${smHtml}
+${stateMachines.length === 0 ? "<p class='empty'>No state machines (no temporal invariants).</p>" : ""}
+<div id="sm-graphs"></div>
 
 <h2>Constraints (${constraints.length})</h2>
 ${constraintsHtml}
@@ -634,6 +690,518 @@ ${constraintsHtml}
   <summary>Full JSON payload</summary>
   <pre class="json-view">${esc(jsonPayload)}</pre>
 </details>
+
+<script>
+(function () {
+  // ── Injected data ────────────────────────────────────────────────────
+  const SM_DATA = ${JSON.stringify(stateMachines)};
+
+  // ── Edge colour palette (bright, works on dark backgrounds) ─────────
+  const EDGE_COLORS = [
+    '#f59e0b',  // amber
+    '#06b6d4',  // cyan
+    '#a78bfa',  // violet
+    '#fb7185',  // rose
+    '#fbbf24',  // yellow
+    '#60a5fa',  // sky blue
+    '#f97316',  // orange
+    '#e879f9',  // fuchsia
+    '#34d399',  // emerald
+    '#f43f5e',  // pink-red
+  ];
+
+  // ── Guard → short human-readable label ──────────────────────────────
+  const OP_SYMBOLS = {
+    And: '\u2227', Or: '\u2228', Eq: '=', Ne: '\u2260',
+    Gt: '>', Lt: '<', Ge: '\u2265', Le: '\u2264',
+    Add: '+', Sub: '\u2212', Mul: '\u00d7', Div: '\u00f7',
+  };
+
+  function summarizeExpr(e, depth) {
+    if (!e || depth > 3) return '\u2026';
+    const k = Object.keys(e)[0];
+    if (!k) return '?';
+    const v = e[k];
+    if (k === 'Binary') {
+      const l = summarizeExpr(v.left, depth + 1);
+      const r = summarizeExpr(v.right, depth + 1);
+      return l + ' ' + (OP_SYMBOLS[v.op] || v.op) + ' ' + r;
+    }
+    if (k === 'Unary') {
+      if (v.op === 'Not') return '\u00ac' + summarizeExpr(v.operand, depth + 1);
+      return v.op + '(' + summarizeExpr(v.operand, depth + 1) + ')';
+    }
+    if (k === 'Ref') {
+      return [v.root.toLowerCase()].concat(v.fields || []).join('.');
+    }
+    if (k === 'Literal') {
+      const lk = Object.keys(v)[0];
+      return lk === 'String' ? '"' + v[lk] + '"' : String(v[lk]);
+    }
+    if (k === 'Count') {
+      return 'count(' + summarizeExpr(v.collection, depth + 1) + ')';
+    }
+    if (k === 'FieldAccess') {
+      return summarizeExpr(v.object, depth + 1) + '.' + v.field;
+    }
+    return k;
+  }
+
+  function summarizeGuard(guard) {
+    if (!guard) return '';
+    const k = Object.keys(guard)[0];
+    if (!k) return '';
+    if (k === 'Predicate') return summarizeExpr(guard[k], 0);
+    if (k === 'NegatedPredicate') return '\u00ac(' + summarizeExpr(guard[k], 0) + ')';
+    if (k === 'Always') return 'always(\u2026)';
+    if (k === 'Timeout') return 'timeout';
+    return k;
+  }
+
+  function trunc(s, n) {
+    return s.length > n ? s.slice(0, n) + '\u2026' : s;
+  }
+
+  // ── State colours ────────────────────────────────────────────────────
+  function stateColor(kind, isViolating, isAccepting) {
+    if (isViolating || kind === 'Violated')  return { fill: '#7f1d1d', stroke: '#ef4444', text: '#fca5a5' };
+    if (isAccepting || kind === 'Satisfied') return { fill: '#14532d', stroke: '#22c55e', text: '#86efac' };
+    if (kind === 'Active' || kind === 'Initial') return { fill: '#1e1b4b', stroke: '#6366f1', text: '#a5b4fc' };
+    return { fill: '#1c1917', stroke: '#78716c', text: '#a8a29e' };
+  }
+
+  // ── Layout ───────────────────────────────────────────────────────────
+  // Returns {id: {x,y}} positions on a circle of radius R, initial state at left.
+  function layoutStates(states, W, H, initialId, R) {
+    const n = states.length;
+    if (n === 0) return {};
+    const cx = W / 2, cy = H / 2;
+    const pos = {};
+    if (n === 1) {
+      pos[states[0].id] = { x: cx, y: cy };
+      return pos;
+    }
+    const initIdx = states.findIndex(function (s) { return s.id === initialId; });
+    states.forEach(function (s, i) {
+      const offset = (i - (initIdx >= 0 ? initIdx : 0) + n) % n;
+      const angle = Math.PI + (2 * Math.PI * offset / n); // initial at left (angle=π)
+      pos[s.id] = { x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle) };
+    });
+    return pos;
+  }
+
+  // Push a point away from all node centres that are within clearance px.
+  // Returns adjusted {x, y}.
+  function avoidNodes(x, y, nodePositions, clearance) {
+    let ox = x, oy = y;
+    for (let iter = 0; iter < 6; iter++) {
+      let moved = false;
+      nodePositions.forEach(function (p) {
+        const dx = ox - p.x, dy = oy - p.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        if (d < clearance) {
+          const push = (clearance - d) / d;
+          ox += dx * push;
+          oy += dy * push;
+          moved = true;
+        }
+      });
+      if (!moved) break;
+    }
+    return { x: ox, y: oy };
+  }
+
+  // ── SVG helpers ──────────────────────────────────────────────────────
+  const NS = 'http://www.w3.org/2000/svg';
+
+  function svgEl(tag, attrs, children) {
+    const node = document.createElementNS(NS, tag);
+    Object.entries(attrs || {}).forEach(function (kv) { node.setAttribute(kv[0], String(kv[1])); });
+    (children || []).forEach(function (c) { node.appendChild(c); });
+    return node;
+  }
+
+  function svgText(content, attrs) {
+    const t = svgEl('text', attrs);
+    t.textContent = content;
+    return t;
+  }
+
+  // ── Edge-label layout constants ──────────────────────────────────────
+  const LABEL_CHAR_W = 5.8;
+  const LABEL_PAD    = 10;
+  const LABEL_H      = 16;
+
+  function labelWidth(text) {
+    return text.length * LABEL_CHAR_W + LABEL_PAD;
+  }
+
+  // Edge label: plain coloured text, no background — colour matches the edge.
+  function svgEdgeLabel(content, x, y, color) {
+    return svgText(content, {
+      x: x, y: y + 4,
+      'text-anchor': 'middle', 'font-size': '10',
+      'font-family': 'monospace', fill: color || '#cbd5e1',
+    });
+  }
+
+  // Iteratively push labels away from each other and from nodes.
+  // Each label: { text, x, y, w }  (h = LABEL_H for all)
+  function resolveLabels(labels, nodePositions, nodeR, maxIter) {
+    const GAP = 5; // minimum pixel gap between label pills
+    for (let iter = 0; iter < maxIter; iter++) {
+      let moved = false;
+
+      // Label-label separation
+      for (let i = 0; i < labels.length; i++) {
+        for (let j = i + 1; j < labels.length; j++) {
+          const a = labels[i], b = labels[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const minSepX = (a.w + b.w) / 2 + GAP;
+          const minSepY = LABEL_H + GAP;
+          if (Math.abs(dx) < minSepX && Math.abs(dy) < minSepY) {
+            // Push radially along the centre-to-centre vector
+            const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+            const overlapX = minSepX - Math.abs(dx);
+            const overlapY = minSepY - Math.abs(dy);
+            const push = Math.min(overlapX, overlapY) / 2 + 1;
+            const nx = dx / d, ny = dy / d;
+            a.x -= nx * push;  a.y -= ny * push;
+            b.x += nx * push;  b.y += ny * push;
+            moved = true;
+          }
+        }
+      }
+
+      // Re-apply node avoidance after each label-push pass
+      labels.forEach(function (lbl) {
+        const safe = avoidNodes(lbl.x, lbl.y, nodePositions, nodeR + LABEL_H + GAP);
+        lbl.x = safe.x;  lbl.y = safe.y;
+      });
+
+      if (!moved) break;
+    }
+  }
+
+  // Point on the border of a circle of radius r at (cx,cy) toward (tx,ty)
+  function edgePoint(cx, cy, tx, ty, r) {
+    const dx = tx - cx, dy = ty - cy;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { x: cx + (dx / d) * r, y: cy + (dy / d) * r };
+  }
+
+  // Perpendicular unit vector
+  function perp(dx, dy) {
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { x: -dy / d, y: dx / d };
+  }
+
+  // ── Draw one state machine ───────────────────────────────────────────
+  function drawSM(sm, smIdx) {
+    const states      = sm.states      || [];
+    const transitions = sm.transitions || [];
+    const initialId   = sm.initial_state;
+    const accepting   = new Set(sm.accepting_states  || []);
+    const violating   = new Set(sm.violating_states  || []);
+
+    const NODE_R = 34;
+    const n      = states.length;
+
+    // Circle radius: guarantee adjacent nodes are NODE_R*5 apart (plenty of
+    // room for edge labels between them).
+    // chord = 2R·sin(π/n) ≥ MIN_CHORD  →  R ≥ MIN_CHORD / (2·sin(π/n))
+    const MIN_CHORD = NODE_R * 5;
+    const layoutR = n <= 1 ? 0
+                  : n === 2 ? MIN_CHORD
+                  : (MIN_CHORD / 2) / Math.sin(Math.PI / n);
+
+    // Canvas: circle + node radius + generous margin for labels + entry arrow
+    const MARGIN = NODE_R + 130;
+    const dim    = Math.max(640, Math.ceil(2 * (layoutR + MARGIN)));
+    const W      = dim;
+    const H      = n <= 2 ? 240 : dim;
+
+    const svg = svgEl('svg', {
+      width: W, height: H,
+      viewBox: '0 0 ' + W + ' ' + H,
+      style: 'display:block;',
+    });
+
+    // One arrowhead marker per palette colour so each edge's arrow matches its line.
+    const markerBase = 'arrow-' + smIdx + '-';
+    const defs = svgEl('defs', {});
+    EDGE_COLORS.forEach(function (color, ci) {
+      defs.appendChild(svgEl('marker', {
+        id: markerBase + ci, markerWidth: '10', markerHeight: '7',
+        refX: '9', refY: '3.5', orient: 'auto',
+      }, [svgEl('polygon', { points: '0 0, 10 3.5, 0 7', fill: color })]));
+    });
+    svg.appendChild(defs);
+
+    // Node positions
+    let pos;
+    if (n === 2) {
+      const cy    = H / 2;
+      const initId = initialId !== undefined ? initialId : states[0].id;
+      const other  = states.find(function (s) { return s.id !== initId; });
+      pos = {};
+      pos[initId] = { x: W * 0.25, y: cy };
+      if (other) { pos[other.id] = { x: W * 0.75, y: cy }; }
+    } else {
+      pos = layoutStates(states, W, H, initialId, layoutR);
+    }
+
+    const nodeCentres = states.map(function (s) { return pos[s.id]; }).filter(Boolean);
+
+    // ── Pass 1: compute edge paths + raw label positions ────────────────
+    const edgeSet = new Set();
+    transitions.forEach(function (t) { edgeSet.add(t.from + '-' + t.to); });
+
+    const edgeAttrs  = [];  // { pathAttrs, color }
+    const labelItems = [];  // { text, x, y, w, color }
+    let   colorIdx   = 0;
+
+    transitions.forEach(function (t) {
+      const sp = pos[t.from], ep = pos[t.to];
+      if (!sp || !ep) return;
+      const color     = EDGE_COLORS[colorIdx % EDGE_COLORS.length];
+      const arrowRef  = 'url(#' + markerBase + (colorIdx % EDGE_COLORS.length) + ')';
+      colorIdx++;
+      const labelText = trunc(summarizeGuard(t.guard), 30);
+      const isBidi    = t.from !== t.to && edgeSet.has(t.to + '-' + t.from);
+
+      if (t.from === t.to) {
+        const loopW = NODE_R * 0.75;
+        const loopH = NODE_R * 2.0;
+        const lx = sp.x - loopW, rx = sp.x + loopW;
+        const topY = sp.y - NODE_R - loopH;
+        edgeAttrs.push({
+          pathAttrs: {
+            d: 'M ' + lx + ' ' + (sp.y - NODE_R) +
+               ' C ' + lx + ' ' + topY + ', ' + rx + ' ' + topY +
+               ', '  + rx + ' ' + (sp.y - NODE_R),
+            fill: 'none', stroke: color, 'stroke-width': '1.5',
+            'marker-end': arrowRef,
+          },
+        });
+        if (labelText) {
+          labelItems.push({ text: labelText, x: sp.x, y: topY - LABEL_H, w: labelWidth(labelText), color: color });
+        }
+      } else {
+        const dx  = ep.x - sp.x, dy = ep.y - sp.y;
+        const src = edgePoint(sp.x, sp.y, ep.x, ep.y, NODE_R);
+        const dst = edgePoint(ep.x, ep.y, sp.x, sp.y, NODE_R + 10);
+        const pv  = perp(dx, dy);
+        const curve = isBidi ? 60 : 35;
+        const sign  = (isBidi && t.from > t.to) ? -1 : 1;
+        const qcx = (src.x + dst.x) / 2 + pv.x * curve * sign;
+        const qcy = (src.y + dst.y) / 2 + pv.y * curve * sign;
+        edgeAttrs.push({
+          pathAttrs: {
+            d: 'M ' + src.x + ' ' + src.y + ' Q ' + qcx + ' ' + qcy + ' ' + dst.x + ' ' + dst.y,
+            fill: 'none', stroke: color, 'stroke-width': '1.5',
+            'marker-end': arrowRef,
+          },
+        });
+        if (labelText) {
+          labelItems.push({
+            text: labelText,
+            x: 0.25 * src.x + 0.5 * qcx + 0.25 * dst.x,
+            y: 0.25 * src.y + 0.5 * qcy + 0.25 * dst.y,
+            w: labelWidth(labelText),
+            color: color,
+          });
+        }
+      }
+    });
+
+    // ── Pass 2: resolve label positions (node avoidance + label separation)
+    labelItems.forEach(function (lbl) {
+      const safe = avoidNodes(lbl.x, lbl.y, nodeCentres, NODE_R + LABEL_H + 8);
+      lbl.x = safe.x;  lbl.y = safe.y;
+    });
+    resolveLabels(labelItems, nodeCentres, NODE_R, 40);
+
+    // ── Render: entry arrow ─────────────────────────────────────────────
+    const initPos = pos[initialId];
+    if (initPos) {
+      svg.appendChild(svgEl('line', {
+        x1: initPos.x - NODE_R - 32, y1: initPos.y,
+        x2: initPos.x - NODE_R - 2,  y2: initPos.y,
+        stroke: '#64748b', 'stroke-width': '1.5',
+        'marker-end': 'url(#' + markerBase + '0)',
+      }));
+    }
+
+    // ── Render: edges ───────────────────────────────────────────────────
+    edgeAttrs.forEach(function (e) {
+      svg.appendChild(svgEl('path', e.pathAttrs));
+    });
+
+    // ── Render: edge labels ─────────────────────────────────────────────
+    labelItems.forEach(function (lbl) {
+      svg.appendChild(svgEdgeLabel(lbl.text, lbl.x, lbl.y, lbl.color));
+    });
+
+    // ── Render: nodes (on top of everything) ────────────────────────────
+    states.forEach(function (s) {
+      const p = pos[s.id];
+      if (!p) return;
+      const col = stateColor(s.kind, violating.has(s.id), accepting.has(s.id));
+
+      if (accepting.has(s.id)) {
+        svg.appendChild(svgEl('circle', {
+          cx: p.x, cy: p.y, r: NODE_R + 7,
+          fill: 'none', stroke: col.stroke, 'stroke-width': '1',
+          'stroke-dasharray': '4,3', opacity: '0.5',
+        }));
+      }
+
+      svg.appendChild(svgEl('circle', {
+        cx: p.x, cy: p.y, r: NODE_R,
+        fill: col.fill, stroke: col.stroke, 'stroke-width': '2',
+      }));
+
+      // State name: one line if short, two lines if long (split at underscore)
+      const rawLabel = s.label || s.kind || String(s.id);
+      if (rawLabel.length <= 9) {
+        svg.appendChild(svgText(rawLabel, {
+          x: p.x, y: p.y - 1,
+          'text-anchor': 'middle', 'font-size': '11',
+          'font-family': 'monospace', fill: col.text,
+        }));
+      } else {
+        const mid   = rawLabel.indexOf('_', Math.floor(rawLabel.length / 3));
+        const split = mid > 0 ? mid + 1 : Math.ceil(rawLabel.length / 2);
+        svg.appendChild(svgText(rawLabel.slice(0, split), {
+          x: p.x, y: p.y - 8,
+          'text-anchor': 'middle', 'font-size': '10',
+          'font-family': 'monospace', fill: col.text,
+        }));
+        svg.appendChild(svgText(rawLabel.slice(split), {
+          x: p.x, y: p.y + 5,
+          'text-anchor': 'middle', 'font-size': '10',
+          'font-family': 'monospace', fill: col.text,
+        }));
+      }
+
+      // State id — inside the node, below the name, same font
+      svg.appendChild(svgText('s' + s.id, {
+        x: p.x, y: p.y + NODE_R - 8,
+        'text-anchor': 'middle', 'font-size': '11',
+        'font-family': 'monospace', fill: col.text,
+      }));
+    });
+
+    return svg;
+  }
+
+  // ── Mount all graphs ─────────────────────────────────────────────────
+  const container = document.getElementById('sm-graphs');
+  if (!container || SM_DATA.length === 0) return;
+
+  SM_DATA.forEach(function (sm, smIdx) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sm-graph-wrapper';
+
+    // ── Title bar ────────────────────────────────────────────────────────
+    const titleBar = document.createElement('div');
+    titleBar.className = 'sm-graph-title';
+    const deadline = sm.deadline_millis
+      ? ' <span class="sm-graph-kind">deadline: ' + sm.deadline_millis + 'ms</span>'
+      : '';
+
+    // Zoom controls (right side of title bar — stopPropagation prevents collapse toggle)
+    const zoomControls = document.createElement('span');
+    zoomControls.className = 'sm-zoom-controls';
+    zoomControls.innerHTML =
+      '<button class="sm-zoom-btn" data-role="out" title="Zoom out">\u2212</button>' +
+      '<span class="sm-zoom-label">100%</span>' +
+      '<button class="sm-zoom-btn" data-role="in"  title="Zoom in">+</button>' +
+      '<button class="sm-zoom-btn" data-role="rst" title="Reset zoom">\u27f3</button>';
+
+    titleBar.innerHTML =
+      '<svg class="sm-graph-chevron" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>' +
+      '<strong>' + (sm.name || '(unnamed)') + '</strong>' +
+      ' <span class="sm-graph-inv">invariant: ' + (sm.invariant_name || '-') + '</span>' +
+      ' <span class="sm-graph-kind">' + (sm.kind || '-') + '</span>' +
+      deadline;
+    titleBar.appendChild(zoomControls);
+    wrapper.appendChild(titleBar);
+
+    // ── Collapsible body ─────────────────────────────────────────────────
+    const body = document.createElement('div');
+    body.className = 'sm-graph-body';
+
+    // svgWrap scrolls; svgInner is sized to the scaled content area
+    const svgWrap = document.createElement('div');
+    svgWrap.className = 'sm-graph-svg-wrap';
+    svgWrap.style.overflow = 'auto';
+
+    const svgInner = document.createElement('div');
+    svgInner.className = 'sm-graph-svg-inner';
+
+    const svgEl = drawSM(sm, smIdx);
+    const origW = parseInt(svgEl.getAttribute('width')  || '640');
+    const origH = parseInt(svgEl.getAttribute('height') || '360');
+    svgEl.style.transformOrigin = '0 0';
+    svgEl.style.display = 'block';
+
+    svgInner.appendChild(svgEl);
+    svgWrap.appendChild(svgInner);
+    body.appendChild(svgWrap);
+
+    const legend = document.createElement('div');
+    legend.className = 'sm-graph-legend';
+    legend.innerHTML =
+      '<span><span class="legend-dot" style="background:#1e1b4b;border:1.5px solid #6366f1"></span>active</span>' +
+      '<span><span class="legend-dot" style="background:#14532d;border:1.5px solid #22c55e"></span>satisfied</span>' +
+      '<span><span class="legend-dot" style="background:#7f1d1d;border:1.5px solid #ef4444"></span>violated</span>' +
+      '<span><span class="legend-dot" style="background:none;border:1.5px dashed #22c55e"></span>accepting</span>' +
+      '<span>\u2192 initial</span>';
+    body.appendChild(legend);
+
+    wrapper.appendChild(body);
+
+    // ── Zoom logic ───────────────────────────────────────────────────────
+    const ZOOM_MIN = 0.25, ZOOM_MAX = 4.0, ZOOM_STEP = 0.25;
+    let zoom = 1.0;
+    const zoomLabel = zoomControls.querySelector('.sm-zoom-label');
+
+    function applyZoom(level) {
+      zoom = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level)) * 20) / 20;
+      svgEl.style.transform = 'scale(' + zoom + ')';
+      svgInner.style.width  = Math.ceil(origW * zoom) + 'px';
+      svgInner.style.height = Math.ceil(origH * zoom) + 'px';
+      if (zoomLabel) { zoomLabel.textContent = Math.round(zoom * 100) + '%'; }
+    }
+
+    zoomControls.addEventListener('click', function (e) {
+      e.stopPropagation(); // don't trigger collapse toggle
+      const btn = /** @type {HTMLElement} */ (e.target);
+      const role = btn && btn.dataset ? btn.dataset.role : null;
+      if (role === 'in')  { applyZoom(zoom + ZOOM_STEP); }
+      if (role === 'out') { applyZoom(zoom - ZOOM_STEP); }
+      if (role === 'rst') { applyZoom(1.0); }
+    });
+
+    svgWrap.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) { return; } // Ctrl/Cmd + scroll to zoom
+      e.preventDefault();
+      applyZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9));
+    }, { passive: false });
+
+    // ── Collapse toggle ──────────────────────────────────────────────────
+    titleBar.addEventListener('click', function () {
+      const isOpen = body.classList.contains('open');
+      body.classList.toggle('open', !isOpen);
+      titleBar.classList.toggle('open', !isOpen);
+    });
+
+    container.appendChild(wrapper);
+  });
+})();
+</script>
 
 </body>
 </html>`;
