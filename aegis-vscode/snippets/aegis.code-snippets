@@ -1,0 +1,242 @@
+{
+  "Policy block": {
+    "prefix": "policy",
+    "body": [
+      "policy ${1:PolicyName} {",
+      "",
+      "  // ── Rate limits ─────────────────────────────────────────",
+      "  rate_limit ${2:tool_call}: ${3:100} per ${4:1m}",
+      "",
+      "  // ── Rules ───────────────────────────────────────────────",
+      "  on ${5:tool_call} {",
+      "    when ${6:event.tool == \"forbidden_tool\"}",
+      "    deny with \"${7:Action denied by policy}\"",
+      "    severity ${8|critical,high,medium,low,info|}",
+      "  }",
+      "",
+      "}"
+    ],
+    "description": "Aegis policy block with rate limit and one rule"
+  },
+
+  "Rule block": {
+    "prefix": "on",
+    "body": [
+      "on ${1:tool_call} {",
+      "  when ${2:event.tool == \"example\"}",
+      "  ${3|deny,allow,audit,redact|} with \"${4:message}\"",
+      "  severity ${5|critical,high,medium,low,info|}",
+      "}"
+    ],
+    "description": "Event rule block"
+  },
+
+  "Deny rule": {
+    "prefix": "deny",
+    "body": [
+      "on ${1:tool_call} {",
+      "  when ${2:condition}",
+      "  deny with \"${3:Denied: reason}\"",
+      "  severity ${4|critical,high,medium,low|}",
+      "}"
+    ],
+    "description": "Deny rule with condition"
+  },
+
+  "Audit rule": {
+    "prefix": "audit",
+    "body": [
+      "on ${1:data_access} {",
+      "  when ${2:condition}",
+      "  audit with \"${3:Audit: reason}\"",
+      "  tag \"${4:audit-tag}\"",
+      "}"
+    ],
+    "description": "Audit rule"
+  },
+
+  "Rate limit": {
+    "prefix": "rate_limit",
+    "body": "rate_limit ${1:tool_call}: ${2:100} per ${3:1m}",
+    "description": "Rate limit constraint"
+  },
+
+  "Quota": {
+    "prefix": "quota",
+    "body": "quota ${1:data_access}: ${2:10000} per ${3:1h}",
+    "description": "Quota constraint"
+  },
+
+  "Proof block": {
+    "prefix": "proof",
+    "body": [
+      "proof ${1:SafetyProof} {",
+      "  invariant ${2:InvariantName} {",
+      "    always(${3:condition})",
+      "  }",
+      "}"
+    ],
+    "description": "Proof block with always invariant"
+  },
+
+  "Always invariant": {
+    "prefix": "invariant-always",
+    "body": [
+      "invariant ${1:InvariantName} {",
+      "  always(${2:condition})",
+      "}"
+    ],
+    "description": "Always (□φ) invariant — condition must hold on every event"
+  },
+
+  "Eventually invariant": {
+    "prefix": "invariant-eventually",
+    "body": [
+      "invariant ${1:InvariantName} {",
+      "  eventually(${2:condition}) within ${3:24h}",
+      "}"
+    ],
+    "description": "Eventually (◇φ) invariant — condition must hold before deadline"
+  },
+
+  "Never invariant": {
+    "prefix": "invariant-never",
+    "body": [
+      "invariant ${1:InvariantName} {",
+      "  never(${2:condition})",
+      "}"
+    ],
+    "description": "Never (□¬φ) invariant — condition must never hold"
+  },
+
+  "After invariant": {
+    "prefix": "invariant-after",
+    "body": [
+      "invariant ${1:InvariantName} {",
+      "  after(",
+      "    ${2:condition_that_must_hold},",
+      "    ${3:trigger_event}",
+      "  )",
+      "}"
+    ],
+    "description": "After invariant — once trigger fires, condition must hold"
+  },
+
+  "Until invariant": {
+    "prefix": "invariant-until",
+    "body": [
+      "invariant ${1:InvariantName} {",
+      "  ${2:precondition} until ${3:release_condition}",
+      "}"
+    ],
+    "description": "Until (φUψ) invariant"
+  },
+
+  "Function definition": {
+    "prefix": "def",
+    "body": [
+      "def ${1:functionName}(${2:param}: ${3:string}) -> ${4:bool} =",
+      "  ${5:expression}"
+    ],
+    "description": "Helper function definition"
+  },
+
+  "Type declaration": {
+    "prefix": "type",
+    "body": [
+      "type ${1:TypeName} {",
+      "  ${2:field}: ${3:string}",
+      "}"
+    ],
+    "description": "Custom type declaration"
+  },
+
+  "Let binding": {
+    "prefix": "let",
+    "body": "let ${1:name} = ${2:expression}",
+    "description": "Policy-level let binding"
+  },
+
+  "Import": {
+    "prefix": "import",
+    "body": "import ${1:automaguard.stdlib.pii} as ${2:pii}",
+    "description": "Import statement"
+  },
+
+  "From import": {
+    "prefix": "from",
+    "body": "from ${1:automaguard.stdlib} import ${2:network, compliance}",
+    "description": "From-import statement"
+  },
+
+  "Quantifier any": {
+    "prefix": "any(",
+    "body": "any(${1:collection}, ${2:item} => ${3:condition})",
+    "description": "any() — true if at least one element matches"
+  },
+
+  "Quantifier all": {
+    "prefix": "all(",
+    "body": "all(${1:collection}, ${2:item} => ${3:condition})",
+    "description": "all() — true if every element matches"
+  },
+
+  "Quantifier none": {
+    "prefix": "none(",
+    "body": "none(${1:collection}, ${2:item} => ${3:condition})",
+    "description": "none() — true if no element matches"
+  },
+
+  "Count expression": {
+    "prefix": "count(",
+    "body": "count(${1:collection}) > ${2:threshold}",
+    "description": "count() — count collection elements"
+  },
+
+  "In list check": {
+    "prefix": "in [",
+    "body": "${1:event.tool} in [${2:\"allowed_tool\"}]",
+    "description": "Membership check against a literal list"
+  },
+
+  "Full data guard": {
+    "prefix": "data-guard",
+    "body": [
+      "policy ${1:DataGuard} {",
+      "  severity ${2|critical,high,medium,low|}",
+      "  scope ${3:tool_call, data_access}",
+      "",
+      "  rate_limit ${3:tool_call}: ${4:100} per ${5:1m}",
+      "",
+      "  on ${3:tool_call} {",
+      "    when ${6:event.tool in [\"drop_table\", \"delete_database\"]}",
+      "    deny with \"${7:Destructive operation blocked}\"",
+      "    severity critical",
+      "  }",
+      "",
+      "  proof ${8:SafetyProof} {",
+      "    invariant ${9:NoDestructiveSequence} {",
+      "      always(!${6:event.tool in [\"drop_table\", \"delete_database\"]})",
+      "    }",
+      "  }",
+      "",
+      "}"
+    ],
+    "description": "Complete data guard policy template"
+  },
+
+  "Exfiltration guard": {
+    "prefix": "exfil-guard",
+    "body": [
+      "proof ${1:ExfiltrationGuard} {",
+      "  invariant ${2:NoSensitiveDataLeak} {",
+      "    after(",
+      "      !(${3:event.event_type == \"external_request\"}),",
+      "      ${4:event.classification == \"sensitive\"}",
+      "    )",
+      "  }",
+      "}"
+    ],
+    "description": "Exfiltration guard proof — blocks external requests after sensitive data access"
+  }
+}

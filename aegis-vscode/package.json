@@ -1,0 +1,196 @@
+{
+  "name": "aegis-language",
+  "displayName": "Aegis Policy Language",
+  "description": "Language support for the Aegis Policy Language (.aegis) and compiled bytecode inspector (.aegisc) — AutomaGuard formal verification engine",
+  "version": "0.1.0",
+  "publisher": "automaguard",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "keywords": ["aegis", "automaguard", "policy", "formal verification", "security"],
+  "icon": "icons/aegis-icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/automaguard/automaguard"
+  },
+  "activationEvents": [],
+  "main": "./out/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "aegis",
+        "aliases": ["Aegis Policy Language", "aegis"],
+        "extensions": [".aegis"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/aegis-light.svg",
+          "dark": "./icons/aegis-dark.svg"
+        }
+      },
+      {
+        "id": "aegisc",
+        "aliases": ["Aegis Bytecode", "aegisc"],
+        "extensions": [".aegisc"]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "aegis",
+        "scopeName": "source.aegis",
+        "path": "./syntaxes/aegis.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "aegis",
+        "path": "./snippets/aegis.code-snippets"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "aegis.aegiscInspector",
+        "displayName": "Aegis Bytecode Inspector",
+        "selector": [{ "filenamePattern": "*.aegisc" }],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "aegis.check",
+        "title": "Aegis: Check Policy",
+        "icon": "$(check)"
+      },
+      {
+        "command": "aegis.compile",
+        "title": "Aegis: Compile Policy",
+        "icon": "$(run)"
+      },
+      {
+        "command": "aegis.dump",
+        "title": "Aegis: Dump Compiled IR as JSON",
+        "icon": "$(json)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "aegis.check",
+          "when": "resourceLangId == aegis",
+          "group": "navigation"
+        },
+        {
+          "command": "aegis.compile",
+          "when": "resourceLangId == aegis",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "aegis.check",
+          "when": "resourceLangId == aegis",
+          "group": "aegis"
+        },
+        {
+          "command": "aegis.compile",
+          "when": "resourceLangId == aegis",
+          "group": "aegis"
+        },
+        {
+          "command": "aegis.dump",
+          "when": "resourceLangId == aegis",
+          "group": "aegis"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aegis.check",
+          "when": "resourceExtname == .aegis",
+          "group": "aegis"
+        },
+        {
+          "command": "aegis.compile",
+          "when": "resourceExtname == .aegis",
+          "group": "aegis"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "aegis.check",
+        "key": "ctrl+shift+;",
+        "mac": "cmd+shift+;",
+        "when": "resourceLangId == aegis && editorFocus"
+      },
+      {
+        "command": "aegis.compile",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "resourceLangId == aegis && editorFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Aegis Policy Language",
+      "properties": {
+        "aegis.compilerPath": {
+          "type": "string",
+          "default": "aegisc",
+          "description": "Path to the aegisc compiler binary. Defaults to 'aegisc' (must be on PATH). Use an absolute path if the binary is not on PATH.",
+          "scope": "machine-overridable"
+        },
+        "aegis.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run aegisc check when a .aegis file is saved.",
+          "scope": "resource"
+        },
+        "aegis.maxDiagnostics": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "description": "Maximum number of diagnostics to report per file.",
+          "scope": "resource"
+        }
+      }
+    },
+    "iconThemes": [
+      {
+        "id": "aegis-icons",
+        "label": "Aegis File Icons",
+        "path": "./icons/aegis-icon-theme.json"
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "aegisc",
+        "owner": "aegis",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": [
+          {
+            "regexp": "^(error|warning)\\[([A-Z0-9]+)\\]: (.+)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^\\s+-->\\s+(.+):(\\d+):(\\d+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "loop": true
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

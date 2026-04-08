@@ -1,0 +1,29 @@
+{
+  "_comment": "Aegis file icon theme — defines icons for .aegis and .aegisc files",
+  "iconDefinitions": {
+    "_aegis": {
+      "iconPath": "./aegis-dark.svg"
+    },
+    "_aegisc": {
+      "iconPath": "./aegisc-dark.svg"
+    }
+  },
+  "fileExtensions": {
+    "aegis": "_aegis",
+    "aegisc": "_aegisc"
+  },
+  "light": {
+    "iconDefinitions": {
+      "_aegis": {
+        "iconPath": "./aegis-light.svg"
+      },
+      "_aegisc": {
+        "iconPath": "./aegisc-light.svg"
+      }
+    },
+    "fileExtensions": {
+      "aegis": "_aegis",
+      "aegisc": "_aegisc"
+    }
+  }
+}
