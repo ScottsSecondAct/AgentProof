@@ -8,14 +8,14 @@ policy CustomerDataGuard {
   on tool_call {
     when event.tool_name in ["drop_table", "truncate_table",
                              "delete_database", "alter_table"]
-    deny "DDL operations are prohibited"
+    deny with "DDL operations are prohibited"
     severity critical
   }
 
   // ── PII data access: audit and tag ─────────────────────────────────────
   on data_access {
     when event.classification == "PII"
-    audit "PII record accessed"
+    audit with "PII record accessed"
     tag   "pii_accessed"
     severity high
   }
@@ -23,19 +23,17 @@ policy CustomerDataGuard {
   // ── External requests: deny if unapproved domain ───────────────────────
   on external_request {
     when !(event.domain in ["internal.corp", "reports.internal.corp"])
-    deny "External endpoint not in approved list"
+    deny with "External endpoint not in approved list"
     severity high
   }
 
   // ── Temporal: PII must never be followed by an external send ──────────
   proof ExfiltrationGuard {
     invariant NoPIIExfiltration {
-      never(
-        after(
-          event.event_type == "external_request",
-          event.event_type == "data_access"
-            && event.classification == "PII"
-        )
+      after(
+        !(event.event_type == "external_request"),
+        event.event_type == "data_access"
+          && event.classification == "PII"
       )
     }
   }
