@@ -130,4 +130,71 @@ mod tests {
         let event = mcp_tool_call_to_event("tool", &JsonValue::Null);
         assert_eq!(event.fields.get("arguments"), Some(&AegisValue::Null));
     }
+
+    #[test]
+    fn float_argument_converted() {
+        let event = mcp_tool_call_to_event("tool", &json!({"score": 0.95}));
+        assert!(matches!(
+            event.fields.get("score"),
+            Some(AegisValue::Float(_))
+        ));
+    }
+
+    #[test]
+    fn array_argument_converted_to_list() {
+        let event = mcp_tool_call_to_event("tool", &json!({"tags": ["a", "b"]}));
+        assert!(matches!(
+            event.fields.get("tags"),
+            Some(AegisValue::List(_))
+        ));
+        if let Some(AegisValue::List(items)) = event.fields.get("tags") {
+            assert_eq!(items.len(), 2);
+        }
+    }
+
+    #[test]
+    fn nested_object_argument_converted_to_map() {
+        let event = mcp_tool_call_to_event(
+            "tool",
+            &json!({"endpoint": {"host": "api.example.com", "port": 443}}),
+        );
+        assert!(matches!(
+            event.fields.get("endpoint"),
+            Some(AegisValue::Map(_))
+        ));
+    }
+
+    #[test]
+    fn unicode_tool_name_preserved() {
+        let event = mcp_tool_call_to_event("tëst_töol", &json!({}));
+        assert_eq!(
+            event.fields.get("tool_name"),
+            Some(&AegisValue::String(SmolStr::new("tëst_töol")))
+        );
+    }
+
+    #[test]
+    fn argument_key_collision_with_tool_name_overwrites_synthesised_alias() {
+        // If the tool's arguments contain a key named "tool_name", it will
+        // overwrite the auto-generated field.  This is documented behaviour:
+        // policies should prefer `event.tool_name` (set before args are
+        // flattened) but the test documents the actual precedence.
+        let event = mcp_tool_call_to_event("real_tool", &json!({"tool_name": "injected_name"}));
+        // The argument's value overwrites the synthesised one.
+        assert_eq!(
+            event.fields.get("tool_name"),
+            Some(&AegisValue::String(SmolStr::new("injected_name")))
+        );
+    }
+
+    #[test]
+    fn event_type_field_is_tool_call() {
+        // Verify the synthetic `event_type` field added by Event::new is present
+        // and carries the correct value.
+        let event = mcp_tool_call_to_event("search", &json!({}));
+        assert_eq!(
+            event.fields.get("event_type"),
+            Some(&AegisValue::String(SmolStr::new("tool_call")))
+        );
+    }
 }

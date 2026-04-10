@@ -37,7 +37,7 @@ pub(crate) struct AegisParser;
 ///
 /// On a fatal parse error the program will be empty (no declarations) but
 /// the diagnostic sink will contain the error details.
-pub fn parse_source(source: &str, filename: &str) -> (Program, DiagnosticSink) {
+pub fn parse_source(source: &str, _filename: &str) -> (Program, DiagnosticSink) {
     let mut diags = DiagnosticSink::new();
 
     let pairs = match AegisParser::parse(Rule::program, source) {
@@ -47,10 +47,32 @@ pub fn parse_source(source: &str, filename: &str) -> (Program, DiagnosticSink) {
                 pest::error::InputLocation::Pos(p) => (p as u32, p as u32),
                 pest::error::InputLocation::Span((s, en)) => (s as u32, en as u32),
             };
+            // Extract a clean message from the pest error variant without the
+            // embedded `-->` location marker (our DiagnosticSink render adds it).
+            let pest_msg = match &e.variant {
+                pest::error::ErrorVariant::ParsingError { positives, negatives } => {
+                    if !positives.is_empty() {
+                        let names: Vec<String> = positives
+                            .iter()
+                            .map(|r| format!("{r:?}").to_lowercase().replace('_', " "))
+                            .collect();
+                        format!("unexpected token; expected {}", names.join(" or "))
+                    } else if !negatives.is_empty() {
+                        let names: Vec<String> = negatives
+                            .iter()
+                            .map(|r| format!("{r:?}").to_lowercase().replace('_', " "))
+                            .collect();
+                        format!("unexpected {}", names.join(" or "))
+                    } else {
+                        "unexpected token".to_string()
+                    }
+                }
+                pest::error::ErrorVariant::CustomError { message } => message.clone(),
+            };
             diags.emit(Diagnostic::error(
                 Span::new(start, end),
                 DiagnosticCode::E0001,
-                format!("parse error in {filename}: {e}"),
+                format!("parse error: {pest_msg}"),
             ));
             return (
                 Program {

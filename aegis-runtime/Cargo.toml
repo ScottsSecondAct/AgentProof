@@ -18,3 +18,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 [[bench]]
 name = "eval_bench"
 harness = false
+
+[[test]]
+name = "latency_tests"
+harness = true

@@ -204,7 +204,7 @@ impl DiagnosticSink {
         self.diagnostics
     }
 
-    /// Format diagnostics for terminal output.
+    /// Format diagnostics for terminal output with source context.
     pub fn render(&self, source: &str, filename: &str) -> String {
         let mut output = String::new();
         for diag in &self.diagnostics {
@@ -217,6 +217,28 @@ impl DiagnosticSink {
                 "{prefix}[{}]: {}\n  --> {filename}:{line}:{col}\n",
                 diag.code, diag.message
             ));
+
+            // Show the source line and a caret pointing to the error.
+            if diag.span != Span::DUMMY {
+                if let Some(src_line) = source_line(source, line) {
+                    let line_num_width = format!("{line}").len();
+                    let gutter = " ".repeat(line_num_width);
+                    let caret_offset = col.saturating_sub(1);
+                    let caret_len = {
+                        let span_len = (diag.span.end.saturating_sub(diag.span.start)) as usize;
+                        span_len.max(1).min(src_line.len().saturating_sub(caret_offset))
+                    };
+                    let caret = "^".repeat(caret_len.max(1));
+                    output.push_str(&format!("   {gutter} |\n"));
+                    output.push_str(&format!(" {line} | {src_line}\n"));
+                    output.push_str(&format!(
+                        "   {gutter} | {}{caret}\n",
+                        " ".repeat(caret_offset)
+                    ));
+                    output.push_str(&format!("   {gutter} |\n"));
+                }
+            }
+
             for note in &diag.notes {
                 if let Some(span) = note.span {
                     let (nl, nc) = offset_to_line_col(source, span.start);
@@ -232,6 +254,46 @@ impl DiagnosticSink {
         }
         output
     }
+
+    /// Format diagnostics as a JSON value for machine-readable output.
+    pub fn to_json(&self, source: &str, filename: &str) -> serde_json::Value {
+        let errors: Vec<serde_json::Value> = self
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .map(|d| {
+                let (line, col) = offset_to_line_col(source, d.span.start);
+                serde_json::json!({
+                    "code": d.code.to_string(),
+                    "message": d.message,
+                    "file": filename,
+                    "line": line,
+                    "col": col,
+                })
+            })
+            .collect();
+        let warnings: Vec<serde_json::Value> = self
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Warning)
+            .map(|d| {
+                let (line, col) = offset_to_line_col(source, d.span.start);
+                serde_json::json!({
+                    "code": d.code.to_string(),
+                    "message": d.message,
+                    "file": filename,
+                    "line": line,
+                    "col": col,
+                })
+            })
+            .collect();
+        serde_json::json!({ "errors": errors, "warnings": warnings })
+    }
+}
+
+/// Return the source text for the given 1-based line number, without its trailing newline.
+fn source_line(source: &str, line: usize) -> Option<&str> {
+    source.lines().nth(line.saturating_sub(1))
 }
 
 fn offset_to_line_col(source: &str, offset: u32) -> (usize, usize) {

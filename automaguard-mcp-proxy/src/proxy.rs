@@ -228,6 +228,7 @@ fn extract_tool_call(msg: &Message) -> (String, JsonValue) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aegis_compiler::{lower, parser};
     use serde_json::json;
 
     fn make_tools_call_msg(name: &str, args: JsonValue) -> Message {
@@ -316,5 +317,140 @@ mod tests {
         let (name, args) = extract_tool_call(&msg);
         assert_eq!(name, "query_db");
         assert_eq!(args["filter"]["active"], json!(true));
+    }
+
+    // ── Policy-driven intercept decisions ─────────────────────────────────
+    //
+    // These tests exercise the bridge → engine → verdict pipeline that
+    // `intercept_loop` runs on every `tools/call` message.  They do not
+    // test async I/O but do validate the core enforcement logic.
+
+    fn engine_from_source(source: &str) -> PolicyEngine {
+        let (program, parse_diags) = parser::parse_source(source, "test.aegis");
+        assert!(!parse_diags.has_errors(), "parse error");
+        let (compiled, compile_diags) = lower::compile(&program);
+        assert!(!compile_diags.has_errors(), "compile error");
+        PolicyEngine::new(compiled.into_iter().next().unwrap())
+    }
+
+    fn simulate_intercept(engine: &mut PolicyEngine, msg: &Message) -> Verdict {
+        let (tool_name, arguments) = extract_tool_call(msg);
+        let event = crate::bridge::mcp_tool_call_to_event(&tool_name, &arguments);
+        engine.evaluate(&event).verdict
+    }
+
+    #[test]
+    fn deny_policy_blocks_matching_tool() {
+        let mut engine = engine_from_source(
+            "policy P { on tool_call { when event.tool_name == \"exec\"\n deny } }",
+        );
+        let msg = make_tools_call_msg("exec", json!({}));
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Deny);
+    }
+
+    #[test]
+    fn deny_policy_allows_non_matching_tool() {
+        let mut engine = engine_from_source(
+            "policy P { on tool_call { when event.tool_name == \"exec\"\n deny } }",
+        );
+        let msg = make_tools_call_msg("search", json!({}));
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Allow);
+    }
+
+    #[test]
+    fn audit_policy_does_not_block() {
+        let mut engine = engine_from_source(r#"policy P { on tool_call { audit } }"#);
+        let msg = make_tools_call_msg("anything", json!({}));
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Audit);
+    }
+
+    #[test]
+    fn deny_on_argument_field_value() {
+        // Policies can match on flattened argument fields (e.g., event.url).
+        let mut engine = engine_from_source(
+            r#"
+            policy P {
+                on tool_call {
+                    when event.url == "file:///etc/passwd"
+                    deny with "path traversal"
+                }
+            }
+        "#,
+        );
+        let allowed = make_tools_call_msg("read_file", json!({"url": "https://safe.example.com"}));
+        let blocked = make_tools_call_msg("read_file", json!({"url": "file:///etc/passwd"}));
+        assert_eq!(simulate_intercept(&mut engine, &allowed), Verdict::Allow);
+        assert_eq!(simulate_intercept(&mut engine, &blocked), Verdict::Deny);
+    }
+
+    #[test]
+    fn rate_limit_triggers_deny_after_budget_exhausted() {
+        let mut engine = engine_from_source(r#"policy P { rate_limit tool_call: 2 per 1m }"#);
+        let msg = make_tools_call_msg("search", json!({}));
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Allow);
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Allow);
+        assert_eq!(simulate_intercept(&mut engine, &msg), Verdict::Deny);
+    }
+
+    #[test]
+    fn never_invariant_permanently_blocks_after_violation() {
+        let mut engine = engine_from_source(
+            r#"
+            policy P {
+                proof Safety {
+                    invariant NoExec { never(event.tool_name == "exec") }
+                }
+            }
+        "#,
+        );
+        let exec = make_tools_call_msg("exec", json!({}));
+        let safe = make_tools_call_msg("search", json!({}));
+        simulate_intercept(&mut engine, &exec); // violate
+        assert_eq!(simulate_intercept(&mut engine, &safe), Verdict::Deny);
+    }
+
+    #[test]
+    fn deny_response_uses_policy_violation_error_code() {
+        // Build the error response the same way intercept_loop does and
+        // verify it carries the documented JSON-RPC error code.
+        let denial = Message::error_response(
+            Some(json!(42)),
+            POLICY_VIOLATION_CODE,
+            "AutomaGuard: test denial".to_string(),
+            None,
+        );
+        let serialised = serde_json::to_value(&denial).unwrap();
+        assert_eq!(serialised["error"]["code"], json!(POLICY_VIOLATION_CODE));
+        assert_eq!(serialised["id"], json!(42));
+        assert!(serialised["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("AutomaGuard"));
+    }
+
+    #[test]
+    fn non_tools_call_message_is_identified_correctly() {
+        // intercept_loop only intercepts messages where method == "tools/call"
+        // AND is_request() is true.  Verify both conditions for other types.
+        let initialize = Message {
+            jsonrpc: "2.0".into(),
+            id: Some(json!(1)),
+            method: Some("initialize".into()),
+            params: None,
+            result: None,
+            error: None,
+        };
+        assert!(initialize.is_request());
+        assert_ne!(initialize.method.as_deref(), Some("tools/call"));
+
+        let notification = Message {
+            jsonrpc: "2.0".into(),
+            id: None, // notifications have no id
+            method: Some("tools/call".into()),
+            params: None,
+            result: None,
+            error: None,
+        };
+        assert!(!notification.is_request()); // must NOT be intercepted
     }
 }

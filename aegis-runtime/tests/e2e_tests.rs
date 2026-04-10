@@ -7,6 +7,8 @@
 //! No stubs or pre-compiled artefacts: each test compiles a policy from source
 //! and immediately evaluates events against it.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use aegis_compiler::ast::Verdict;
 use aegis_compiler::{bytecode, lower, parser};
 use aegis_runtime::engine::PolicyEngine;
@@ -273,4 +275,257 @@ fn e2e_engine_from_file_produces_correct_verdicts() {
     );
 
     let _ = std::fs::remove_file(&path);
+}
+
+// ── always invariant ──────────────────────────────────────────────────────────
+
+const ALWAYS_PUBLIC: &str = r#"
+policy AlwaysPublic {
+    proof DataPolicy {
+        invariant NoSecretAccess {
+            always(event.classification != "secret")
+        }
+    }
+}
+"#;
+
+#[test]
+fn e2e_always_allows_while_condition_holds() {
+    let mut engine = engine_from_source(ALWAYS_PUBLIC);
+    for _ in 0..5 {
+        let ev = Event::new("data_access").with_field("classification", Value::String(s("public")));
+        assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+    }
+}
+
+#[test]
+fn e2e_always_denies_on_violation() {
+    let mut engine = engine_from_source(ALWAYS_PUBLIC);
+    let ev = Event::new("data_access").with_field("classification", Value::String(s("secret")));
+    let result = engine.evaluate(&ev);
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn e2e_always_violation_is_permanent() {
+    let mut engine = engine_from_source(ALWAYS_PUBLIC);
+    // Violate once.
+    let bad = Event::new("data_access").with_field("classification", Value::String(s("secret")));
+    engine.evaluate(&bad);
+    // Safe events afterwards are still denied — the session is poisoned.
+    let good = Event::new("data_access").with_field("classification", Value::String(s("public")));
+    assert_eq!(engine.evaluate(&good).verdict, Verdict::Deny);
+}
+
+// ── eventually invariant ──────────────────────────────────────────────────────
+
+const EVENTUALLY_CHECKPOINT: &str = r#"
+policy MustCheckpoint {
+    proof Progress {
+        invariant CheckpointRequired {
+            eventually(event.tool_name == "checkpoint") within 5000ms
+        }
+    }
+}
+"#;
+
+#[test]
+fn e2e_eventually_satisfied_before_deadline() {
+    let mut engine = engine_from_source(EVENTUALLY_CHECKPOINT);
+    let ev = Event::new("tool_call").with_field("tool_name", Value::String(s("checkpoint")));
+    assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+}
+
+#[test]
+fn e2e_eventually_denies_after_deadline_expires() {
+    let mut engine = engine_from_source(EVENTUALLY_CHECKPOINT);
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    // Send an irrelevant event well past the 5000ms deadline.
+    let mut ev = Event::new("tool_call");
+    ev.timestamp_ms = now_ms + 6_000; // 6 s after engine start
+    ev.fields
+        .insert(s("tool_name"), Value::String(s("http_get")));
+    let result = engine.evaluate(&ev);
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn e2e_eventually_non_matching_event_does_not_satisfy() {
+    let mut engine = engine_from_source(EVENTUALLY_CHECKPOINT);
+    // A tool_call that is NOT a checkpoint must not satisfy the invariant.
+    let ev = Event::new("tool_call").with_field("tool_name", Value::String(s("http_get")));
+    // Machine should still be active (waiting) — no violation yet.
+    assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+}
+
+// ── before invariant ──────────────────────────────────────────────────────────
+
+const APPROVAL_BEFORE_DELETE: &str = r#"
+policy ApprovalGate {
+    proof DeletionPolicy {
+        invariant ApprovalFirst {
+            before(
+                event.tool_name == "approve",
+                event.tool_name == "delete"
+            )
+        }
+    }
+}
+"#;
+
+#[test]
+fn e2e_before_allows_when_first_arg_occurs_first() {
+    let mut engine = engine_from_source(APPROVAL_BEFORE_DELETE);
+    let approve = Event::new("tool_call").with_field("tool_name", Value::String(s("approve")));
+    assert_eq!(engine.evaluate(&approve).verdict, Verdict::Allow);
+    // Delete is now allowed because approval came first.
+    let delete = Event::new("tool_call").with_field("tool_name", Value::String(s("delete")));
+    assert_eq!(engine.evaluate(&delete).verdict, Verdict::Allow);
+}
+
+#[test]
+fn e2e_before_denies_when_second_arg_occurs_first() {
+    let mut engine = engine_from_source(APPROVAL_BEFORE_DELETE);
+    let delete = Event::new("tool_call").with_field("tool_name", Value::String(s("delete")));
+    let result = engine.evaluate(&delete);
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn e2e_before_unrelated_events_do_not_trigger_violation() {
+    let mut engine = engine_from_source(APPROVAL_BEFORE_DELETE);
+    for _ in 0..3 {
+        let ev = Event::new("tool_call").with_field("tool_name", Value::String(s("http_get")));
+        assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+    }
+}
+
+// ── after invariant ───────────────────────────────────────────────────────────
+
+// after(condition, trigger): after `trigger` fires, the very next event must
+// satisfy `condition`.  Here: after a PII data_access, the next event must
+// NOT be an external_request.
+const NO_EXFILTRATION_AFTER_PII: &str = r#"
+policy ExfilGuard {
+    proof Exfiltration {
+        invariant NoPIIThenExternal {
+            after(
+                !(event.event_type == "external_request"),
+                event.event_type == "data_access" && event.classification == "PII"
+            )
+        }
+    }
+}
+"#;
+
+#[test]
+fn e2e_after_allows_when_condition_holds_after_trigger() {
+    let mut engine = engine_from_source(NO_EXFILTRATION_AFTER_PII);
+    // Trigger: PII data access.
+    let pii = Event::new("data_access").with_field("classification", Value::String(s("PII")));
+    assert_eq!(engine.evaluate(&pii).verdict, Verdict::Allow);
+    // Next event: a safe tool call — condition !(event_type == external_request) holds.
+    let safe = Event::new("tool_call");
+    assert_eq!(engine.evaluate(&safe).verdict, Verdict::Allow);
+}
+
+#[test]
+fn e2e_after_denies_when_condition_fails_after_trigger() {
+    let mut engine = engine_from_source(NO_EXFILTRATION_AFTER_PII);
+    // Trigger.
+    let pii = Event::new("data_access").with_field("classification", Value::String(s("PII")));
+    engine.evaluate(&pii);
+    // Next event: external_request — condition fails.
+    let exfil = Event::new("external_request");
+    let result = engine.evaluate(&exfil);
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+#[test]
+fn e2e_after_no_trigger_means_no_violation() {
+    let mut engine = engine_from_source(NO_EXFILTRATION_AFTER_PII);
+    // external_request events without a prior PII trigger are fine.
+    for _ in 0..3 {
+        let ev = Event::new("external_request");
+        assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+    }
+}
+
+// ── until invariant ───────────────────────────────────────────────────────────
+
+// `hold until release`: `event.status != "breach"` must hold on every event
+// until `event.status == "cleared"` fires.
+//
+// NOTE: The `until` operator has lower precedence than `!=` only if the hold
+// expression is parenthesised.  Without parentheses, `a != b until c` parses
+// as `a != (b until c)` (a relational comparison against a temporal expr),
+// which produces no state machine.  Always wrap complex hold conditions: `(φ)
+// until ψ`.
+const QUARANTINE_UNTIL_CLEARED: &str = r#"
+policy QuarantinePolicy {
+    proof QuarantineGate {
+        invariant StayQuarantinedUntilCleared {
+            (event.status != "breach") until event.status == "cleared"
+        }
+    }
+}
+"#;
+
+#[test]
+fn e2e_until_allows_while_hold_condition_holds() {
+    let mut engine = engine_from_source(QUARANTINE_UNTIL_CLEARED);
+    for _ in 0..3 {
+        let ev = Event::new("status_check").with_field("status", Value::String(s("ok")));
+        assert_eq!(engine.evaluate(&ev).verdict, Verdict::Allow);
+    }
+}
+
+#[test]
+fn e2e_until_satisfies_when_release_occurs() {
+    let mut engine = engine_from_source(QUARANTINE_UNTIL_CLEARED);
+    let cleared = Event::new("status_check").with_field("status", Value::String(s("cleared")));
+    assert_eq!(engine.evaluate(&cleared).verdict, Verdict::Allow);
+}
+
+#[test]
+fn e2e_until_denies_when_hold_breaks_before_release() {
+    let mut engine = engine_from_source(QUARANTINE_UNTIL_CLEARED);
+    let breach = Event::new("status_check").with_field("status", Value::String(s("breach")));
+    let result = engine.evaluate(&breach);
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
+}
+
+// ── event.event_type synthetic field ─────────────────────────────────────────
+
+#[test]
+fn e2e_event_type_is_accessible_as_field_in_proof_predicates() {
+    // Verify that `event.event_type` resolves correctly inside proof invariants
+    // (where `on <event_type> { ... }` block filtering is unavailable).
+    const CHECK_EVENT_TYPE: &str = r#"
+    policy EventTypeCheck {
+        proof TypeGate {
+            invariant NoExternalRequests {
+                never(event.event_type == "external_request")
+            }
+        }
+    }
+    "#;
+    let mut engine = engine_from_source(CHECK_EVENT_TYPE);
+    // A non-matching event type should be allowed.
+    assert_eq!(
+        engine.evaluate(&Event::new("tool_call")).verdict,
+        Verdict::Allow
+    );
+    // The prohibited type must be denied.
+    let result = engine.evaluate(&Event::new("external_request"));
+    assert_eq!(result.verdict, Verdict::Deny);
+    assert!(!result.violations.is_empty());
 }

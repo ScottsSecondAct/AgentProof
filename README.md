@@ -391,8 +391,8 @@ aegisc compile policy.aegis -o policy.aegisc
 # Type-check only (no output)
 aegisc check policy.aegis
 
-# Inspect a compiled policy
-aegisc inspect policy.aegis
+# Inspect a compiled policy file
+aegisc inspect policy.aegisc
 
 # Dump compiled IR as JSON
 aegisc dump policy.aegis | jq .

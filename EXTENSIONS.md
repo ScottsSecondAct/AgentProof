@@ -1,8 +1,8 @@
 # AutomaGuard SDK Extensions
 
-This document plans the implementation of AutomaGuard SDK bindings beyond the
-existing Python SDK. The goal is to make compiled policy enforcement available
-wherever AI agents are built.
+This document describes the AutomaGuard SDK bindings that make compiled policy
+enforcement available wherever AI agents are built. All SDKs listed below are
+implemented and available.
 
 ## Target Languages
 
@@ -306,11 +306,12 @@ NuGet packages: `AutomaGuard` and `AutomaGuard.SemanticKernel`.
 
 ## 4. Java / Kotlin SDK (`automaguard-java/`)
 
-JNI bindings via **jni-rs** (preferred over JNA for performance; avoids
-reflection overhead). Targets Java 11+ and Kotlin 1.9+.
+Plain JNI bindings (preferred over JNA for performance; avoids reflection
+overhead). Targets Java 11+ and Kotlin 1.9+.
 
-The native library is bundled in the JAR as a resource and extracted to a temp
-directory at class-load time (standard JNI packaging pattern).
+The native library (`libaegis_jni`) is bundled in the JAR as a resource and
+extracted to a temp directory at class-load time via a custom `NativeLoader`
+class (standard JNI packaging pattern).
 
 ### API design (Java)
 
@@ -372,7 +373,7 @@ Implements LangChain4j's `ToolExecutionResultHandler` and
 automaguard-java/
 ├── pom.xml                    # Maven (Gradle build also provided)
 ├── build.gradle.kts
-├── rust/                      # jni-rs crate (compiled into the JAR)
+├── rust/                      # JNI native library crate (compiled into the JAR)
 │   ├── Cargo.toml
 │   └── src/lib.rs
 ├── src/

@@ -77,7 +77,9 @@ function loadNative(): NativeBinding {
   }
 
   // 2. Fall back to a local build (development / CI).
-  const localFile = `${__dirname}/../${fileNames[platformKey]}`;
+  // Note: this file compiles from js/index.ts → index.js (package root),
+  // so __dirname at runtime is the package root, not the js/ subdirectory.
+  const localFile = `${__dirname}/${fileNames[platformKey]}`;
   try {
     return require(localFile) as NativeBinding;
   } catch (err) {

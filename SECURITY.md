@@ -44,4 +44,4 @@ AutomaGuard is a policy compilation and enforcement engine for AI agents. Releva
 - Issues requiring physical access to the machine running the agent
 - Social engineering
 - Vulnerabilities in upstream dependencies that already have published fixes (please check first)
-- The dashboard UI (not yet built)
+- Cosmetic or usability issues in the compliance dashboard

@@ -41,18 +41,20 @@ aegisc inspect guard.aegisc
 
 ```rust
 use aegis_compiler::{cli, bytecode};
+use std::path::Path;
 
-// Compile from source
-let policies = cli::compile_source(source_code, "guard.aegis")?;
+// Compile from source text
+let policies = cli::run_pipeline(source_code, "guard.aegis")
+    .map_err(|e| e)?;
 
-// Serialize to bytecode
+// Serialize to bytecode bytes (in-memory)
 let bytes = bytecode::to_bytecode(&policies[0])?;
 
-// Write to file
-bytecode::write_file("guard.aegisc", &policies[0])?;
+// Write to a .aegisc file
+bytecode::write_file(Path::new("guard.aegisc"), &policies[0])?;
 
-// Read back
-let policy = bytecode::read_file("guard.aegisc")?;
+// Read a compiled policy back
+let policy = bytecode::read_file(Path::new("guard.aegisc"))?;
 ```
 
 ## Building

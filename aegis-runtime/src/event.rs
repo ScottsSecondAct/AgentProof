@@ -213,15 +213,22 @@ pub struct Event {
 
 impl Event {
     pub fn new(event_type: impl Into<SmolStr>) -> Self {
+        let et: SmolStr = event_type.into();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis() as u64;
 
+        // Pre-populate `event_type` so policies can match on `event.event_type`
+        // directly inside proof invariants (where `on <type>` filtering is
+        // not available).
+        let mut fields = HashMap::new();
+        fields.insert(SmolStr::new("event_type"), Value::String(et.clone()));
+
         Self {
-            event_type: event_type.into(),
+            event_type: et,
             timestamp_ms: now,
-            fields: HashMap::new(),
+            fields,
         }
     }
 

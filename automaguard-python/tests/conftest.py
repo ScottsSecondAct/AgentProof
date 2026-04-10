@@ -18,21 +18,45 @@ import pytest
 
 from aegis_enforce._engine import PolicyEngine, PolicyResult
 
+try:
+    from aegis_enforce._automaguard_core import PolicyEngine as _NativeEngine  # noqa: F401
+
+    NATIVE_AVAILABLE = True
+except ImportError:
+    NATIVE_AVAILABLE = False
+
 
 # ── .aegisc helpers ───────────────────────────────────────────────────────────
 
 _MAGIC = b"\xae\x91\x5c\x01"
 
 
+def minimal_policy_dict(name: str = "test") -> dict[str, Any]:
+    """Return the smallest CompiledPolicy dict accepted by the Rust deserializer."""
+    return {
+        "name": name,
+        "severity": "High",
+        "scopes": [],
+        "rules": [],
+        "constraints": [],
+        "state_machines": [],
+        "metadata": {
+            "annotations": [],
+            "source_hash": 0,
+            "compiler_version": "test",
+        },
+    }
+
+
 def make_aegisc_bytes(policy: dict[str, Any]) -> bytes:
-    """Build a minimal valid .aegisc byte payload from a policy dict."""
+    """Build a valid .aegisc byte payload from a CompiledPolicy dict."""
     payload = json.dumps(policy).encode()
     header = _MAGIC + struct.pack("<HHI", 1, 0, len(payload))
     return header + payload
 
 
 def make_aegisc_file(tmp_path: Path, policy: dict[str, Any]) -> Path:
-    """Write a minimal valid .aegisc file and return its path."""
+    """Write a valid .aegisc file and return its path."""
     p = tmp_path / "test.aegisc"
     p.write_bytes(make_aegisc_bytes(policy))
     return p

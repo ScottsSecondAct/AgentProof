@@ -218,6 +218,28 @@ fn check_no_args_returns_1() {
 }
 
 #[test]
+fn check_json_flag_no_file_returns_1() {
+    assert_eq!(cli_main(&args(&["aegisc", "check", "--json"])), 1);
+}
+
+#[test]
+fn check_json_valid_file_returns_0() {
+    let src = write_rich_aegis("check_json_valid");
+    let code = cli_main(&args(&["aegisc", "check", "--json", src.to_str().unwrap()]));
+    let _ = std::fs::remove_file(&src);
+    assert_eq!(code, 0);
+}
+
+#[test]
+fn check_json_invalid_policy_returns_1() {
+    let path = tmp("check_json_invalid", "aegis");
+    std::fs::write(&path, "policy Bad { on tool_call { when event.x ==\n deny } }").unwrap();
+    let code = cli_main(&args(&["aegisc", "check", "--json", path.to_str().unwrap()]));
+    let _ = std::fs::remove_file(&path);
+    assert_eq!(code, 1);
+}
+
+#[test]
 fn check_missing_file_returns_1() {
     assert_eq!(
         cli_main(&args(&[

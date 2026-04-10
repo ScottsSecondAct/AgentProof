@@ -30,6 +30,7 @@ version = "0.1.0"
 dependencies = [
  "aegis-compiler",
  "aegis-runtime",
+ "serde_json",
  "smol_str",
  "thiserror",
  "tokio",
